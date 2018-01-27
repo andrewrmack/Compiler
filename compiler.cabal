@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 30a680c25595ece51c09aed6f9103b53930ea55478ade7f7693eb81e293be358
+-- hash: 7a0d50b022a0505303a9ad15cc789f37d504eb86b8b9c90b8b8ec9d49b3b4988
 
 name:           compiler
 version:        0.1.0.0
@@ -30,6 +30,10 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , lens
+  build-tools:
+      alex
+    , happy
   exposed-modules:
       Lib
   other-modules:
@@ -44,6 +48,7 @@ executable compiler-exe
   build-depends:
       base >=4.7 && <5
     , compiler
+    , optparse-applicative
   other-modules:
       Paths_compiler
   default-language: Haskell2010

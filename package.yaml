@@ -24,6 +24,11 @@ dependencies:
 
 library:
   source-dirs: src
+  build-tools:
+    - alex
+    - happy
+  dependencies:
+    - lens
 
 executables:
   compiler-exe:
@@ -35,6 +40,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - compiler
+    - optparse-applicative
 
 tests:
   compiler-test:
