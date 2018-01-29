@@ -1,0 +1,8 @@
+compiler - a compiler for CSC-312
+
+Usage: compiler [-l|--length] [args]
+  Print command line arguments on separate lines
+
+Available options:
+  -l,--length              prints the lengths of the arguments
+  -h,--help                Show this help text

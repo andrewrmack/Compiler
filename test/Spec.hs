@@ -1,2 +1,7 @@
+import System.Exit    (exitWith)
+import System.Process (system)
+
 main :: IO ()
-main = putStrLn "Test suite not yet implemented"
+main = do
+  exitcode <- system "./test/extrinsic-tests.sh"
+  exitWith exitcode
