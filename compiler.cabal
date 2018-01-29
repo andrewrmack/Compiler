@@ -2,10 +2,10 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7a0d50b022a0505303a9ad15cc789f37d504eb86b8b9c90b8b8ec9d49b3b4988
+-- hash: fa2e196c1c00200a4f98863acf259d769e360db36efbec587081c589c01e5360
 
 name:           compiler
-version:        0.1.0.0
+version:        0.1.0
 description:    Please see the README on Github at <https://github.com/andrewrmack/compiler#readme>
 homepage:       https://github.com/andrewrmack/compiler#readme
 bug-reports:    https://github.com/andrewrmack/compiler/issues
@@ -35,12 +35,13 @@ library
       alex
     , happy
   exposed-modules:
+      Lexer
       Lib
   other-modules:
       Paths_compiler
   default-language: Haskell2010
 
-executable compiler-exe
+executable compiler
   main-is: Main.hs
   hs-source-dirs:
       app
@@ -62,6 +63,7 @@ test-suite compiler-test
   build-depends:
       base >=4.7 && <5
     , compiler
+    , process
   other-modules:
       Paths_compiler
   default-language: Haskell2010

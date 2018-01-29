@@ -1,5 +1,5 @@
 name:                compiler
-version:             0.1.0.0
+version:             0.1.0
 github:              "andrewrmack/compiler"
 license:             BSD3
 author:              "Andrew Mack"
@@ -31,7 +31,7 @@ library:
     - lens
 
 executables:
-  compiler-exe:
+  compiler:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -52,3 +52,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - compiler
+    - process

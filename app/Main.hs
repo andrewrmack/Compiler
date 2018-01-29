@@ -7,15 +7,15 @@ import System.Environment  (getArgs)
 import Lib
 
 data Args = Args
-    { lenFlag  :: Bool
-    , leftoverArgs :: [String]
-    }
+  { lenFlag  :: Bool
+  , leftoverArgs :: [String]
+  }
 
 parseLenFlag :: Parser Bool
 parseLenFlag = switch
-    ( long "length"
-   <> short 'l'
-   <> help "prints the lengths of the arguments")
+  ( long "length"
+ <> short 'l'
+ <> help "prints the lengths of the arguments")
 
 parseLeftovers :: Parser [String]
 parseLeftovers = many (strArgument (metavar "args"))
