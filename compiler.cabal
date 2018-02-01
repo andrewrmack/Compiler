@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: fa2e196c1c00200a4f98863acf259d769e360db36efbec587081c589c01e5360
+-- hash: 5ac33671b03d7fc9f7eb7a633cc7ce3730a5b8c11a50d7443693f09eee5cd99a
 
 name:           compiler
 version:        0.1.0
@@ -35,8 +35,10 @@ library
       alex
     , happy
   exposed-modules:
+      Interpreter
       Lexer
       Lib
+      Parser
   other-modules:
       Paths_compiler
   default-language: Haskell2010
