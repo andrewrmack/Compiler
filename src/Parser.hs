@@ -1,11 +1,17 @@
+{-# LANGUAGE DeriveGeneric #-}
 module Parser (parse, Expr(..)) where
+
+import Control.DeepSeq (NFData)
+import GHC.Generics    (Generic)
 
 import Lexer
 
 data Expr =
     EInt Integer
-  | EAdd Expr Expr
-  deriving (Show, Eq)
+  | EOp (Integer -> Integer -> Integer) Expr Expr
+  deriving (Generic)
+
+instance NFData Expr
 
 parse :: [Token] -> Expr
 parse ts =
@@ -15,9 +21,9 @@ parse ts =
 
 parse' :: [Token] -> (Expr, [Token])
 parse' (TInt n : ts) = (EInt n, ts)
-parse' (TLParen:TPlus:ts) =
+parse' (TLParen:TOp op:ts) =
   case ts'' of
-    TRParen:ts''' -> (EAdd e1 e2, ts''')
+    TRParen:ts''' -> (EOp op e1 e2, ts''')
     _             -> error "Missing closing )"
   where
     (e1, ts')  = parse' ts

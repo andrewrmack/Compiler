@@ -1,25 +1,38 @@
+{-# LANGUAGE DeriveGeneric #-}
 module Lexer (lexer, Token(..)) where
 
-import Data.Char (isSpace, isDigit)
+import Control.DeepSeq (NFData)
+import Data.Char       (isSpace, isDigit)
+import qualified Data.Text as T
+import Data.Text.Read
+import GHC.Generics    (Generic)
 
 data Token =
     TLParen
   | TRParen
-  | TPlus
+  | TOp (Integer -> Integer -> Integer)
   | TInt Integer
-  deriving (Show, Eq)
+  deriving (Generic)
 
-lexer :: String -> [Token]
-lexer ""       = []
-lexer ('(':ss) = TLParen : lexer ss
-lexer (')':ss) = TRParen : lexer ss
-lexer ('+':ss) = TPlus   : lexer ss
-lexer str@(s:ss)
-  | isSpace s = lexer ss
-  | isDigit s = lexInt str
-  | otherwise = error $ "Unparseable character '" ++ [s] ++ "' encountered"
+instance NFData Token
 
-lexInt :: String -> [Token]
-lexInt str = TInt (read num) : lexer rest
+lexer :: T.Text -> [Token]
+lexer txt =
+  case T.uncons txt of
+    Nothing -> []
+    Just ('(', txt') -> TLParen : lexer txt'
+    Just (')', txt') -> TRParen : lexer txt'
+    Just ('+', txt') -> TOp (+) : lexer txt'
+    Just ('-', txt') -> TOp (-) : lexer txt'
+    Just ('*', txt') -> TOp (*) : lexer txt'
+    Just ('/', txt') -> TOp div : lexer txt'
+    Just (t,   txt') -> let go | isSpace t = lexer (T.stripStart txt')
+                               | isDigit t = lexInt txt
+                               | otherwise = error $ "Can't lex character '" ++ t : "'"
+                         in go
+
+lexInt :: T.Text -> [Token]
+lexInt txt = TInt num : lexer rest
   where
-    (num, rest) = span isDigit str
+    (num, rest) = case decimal txt of
+                    Right (n, r) -> (n, r)

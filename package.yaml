@@ -29,6 +29,8 @@ library:
     - happy
   dependencies:
     - lens
+    - deepseq
+    - text
 
 executables:
   compiler:
@@ -53,3 +55,19 @@ tests:
     dependencies:
     - compiler
     - process
+
+benchmarks:
+  compiler-benchmarks:
+    main:                Bench.hs
+    source-dirs:         benchmarks
+    dependencies:
+    - base
+    - compiler
+    - criterion
+    - deepseq
+    - text
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -O2
