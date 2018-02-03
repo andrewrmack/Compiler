@@ -17,7 +17,7 @@ parse :: [Token] -> Expr
 parse ts =
   case parse' ts of
     (e, []) -> e
-    (_, ts) -> error "Trailing tokens founds"
+    _ -> error "Trailing tokens founds"
 
 parse' :: [Token] -> (Expr, [Token])
 parse' (TInt n : ts) = (EInt n, ts)

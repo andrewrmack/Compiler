@@ -36,3 +36,4 @@ lexInt txt = TInt num : lexer rest
   where
     (num, rest) = case decimal txt of
                     Right (n, r) -> (n, r)
+                    Left _       -> error $ "Can't lex '" ++ T.unpack txt ++ "' (you should never see this error)"

@@ -31,6 +31,9 @@ library:
     - lens
     - deepseq
     - text
+  ghc-options:
+    - -O2
+    - -Wall
 
 executables:
   compiler:
@@ -40,9 +43,13 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -O2
+    - -Wall
     dependencies:
     - compiler
     - optparse-applicative
+    other-modules:
+    - Paths_compiler
 
 tests:
   compiler-test:
@@ -52,6 +59,7 @@ tests:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -O2
     dependencies:
     - compiler
     - process
