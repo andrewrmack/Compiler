@@ -20,12 +20,12 @@ lexer :: T.Text -> [Token]
 lexer txt =
   case T.uncons txt of
     Nothing -> []
-    Just ('(', txt') -> TLParen : lexer txt'
-    Just (')', txt') -> TRParen : lexer txt'
-    Just ('+', txt') -> TOp (+) : lexer txt'
-    Just ('-', txt') -> TOp (-) : lexer txt'
-    Just ('*', txt') -> TOp (*) : lexer txt'
-    Just ('/', txt') -> TOp div : lexer txt'
+    Just ('(', txt') -> TLParen  : lexer txt'
+    Just (')', txt') -> TRParen  : lexer txt'
+    Just ('+', txt') -> TOp (+)  : lexer txt'
+    Just ('-', txt') -> TOp (-)  : lexer txt'
+    Just ('*', txt') -> TOp (*)  : lexer txt'
+    Just ('/', txt') -> TOp div' : lexer txt'
     Just (t,   txt') -> let go | isSpace t = lexer (T.stripStart txt')
                                | isDigit t = lexInt txt
                                | otherwise = error $ "Can't lex character '" ++ t : "'"
@@ -37,3 +37,8 @@ lexInt txt = TInt num : lexer rest
     (num, rest) = case decimal txt of
                     Right (n, r) -> (n, r)
                     Left _       -> error $ "Can't lex '" ++ T.unpack txt ++ "' (you should never see this error)"
+
+div' :: (Integral a) => a -> a -> a
+div' m n
+  | n == 0    = error "Error: Divide by zero"
+  | otherwise = div m n
