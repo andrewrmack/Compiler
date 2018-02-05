@@ -1,37 +1,40 @@
 module Main where
 
 import Data.Semigroup      ((<>))
+import qualified Data.Text.IO as TIO
+import Data.Version        (showVersion)
 import Options.Applicative
-import System.Environment  (getArgs)
 
-import Lib
+import Interpreter
+import Paths_compiler      (version)
 
-data Args = Args
-  { lenFlag  :: Bool
-  , leftoverArgs :: [String]
-  }
+data Args = Args { versionFlag :: Bool, input :: FilePath }
 
-parseLenFlag :: Parser Bool
-parseLenFlag = switch
-  ( long "length"
- <> short 'l'
- <> help "prints the lengths of the arguments")
+parseVersionFlag :: Parser Bool
+parseVersionFlag = switch
+  ( long "version"
+ <> short 'v'
+ <> help "Show the version number")
 
-parseLeftovers :: Parser [String]
-parseLeftovers = many (strArgument (metavar "args"))
+parseFileName :: Parser String
+parseFileName = argument str (metavar "FILE")
 
 parseArgs :: Parser Args
-parseArgs = Args <$> parseLenFlag <*> parseLeftovers
+parseArgs = Args <$> parseVersionFlag <*> parseFileName
 
 main :: IO ()
-main = showOptions =<< execParser opts
+main = do
+  (Args ver file) <- execParser opts
+  if ver
+  then putStrLn $ "compiler, version " ++ showVersion version
+  else interpretFile file
   where
     opts = info (parseArgs <**> helper)
       ( fullDesc
      <> progDesc "Print command line arguments on separate lines"
      <> header "compiler - a compiler for CSC-312" )
 
-showOptions :: Args -> IO ()
-showOptions (Args b args) = mapM_ displayFunc args
-  where
-    displayFunc = if b then (putStrLn . show . length) else putStrLn
+interpretFile :: String -> IO ()
+interpretFile file = do
+  contents <- TIO.readFile file
+  print $ evaluate contents
