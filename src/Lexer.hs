@@ -1,44 +1,73 @@
-{-# LANGUAGE DeriveGeneric #-}
-module Lexer (lexer, Token(..)) where
+{-# LANGUAGE DeriveGeneric, OverloadedStrings, RankNTypes #-}
+module Lexer
+  ( lexer
+  , Token(..)
+  , Op(..)
+  ) where
 
 import Control.DeepSeq (NFData)
-import Data.Char       (isSpace, isDigit)
+import Data.Char       (isSpace, isDigit, isAlpha)
 import qualified Data.Text as T
 import Data.Text.Read
 import GHC.Generics    (Generic)
 
+data Op = Plus | Minus | Times | Divide deriving (Generic)
+
 data Token =
     TLParen
   | TRParen
-  | TOp (Integer -> Integer -> Integer)
+  | TLte
+  | TIf
+  | TOp Op
   | TInt Integer
+  | TFloat Double
+  | TBool Bool
   deriving (Generic)
 
+instance NFData Op
 instance NFData Token
 
 lexer :: T.Text -> [Token]
 lexer txt =
   case T.uncons txt of
     Nothing -> []
-    Just ('(', txt') -> TLParen  : lexer txt'
-    Just (')', txt') -> TRParen  : lexer txt'
-    Just ('+', txt') -> TOp (+)  : lexer txt'
-    Just ('-', txt') -> TOp (-)  : lexer txt'
-    Just ('*', txt') -> TOp (*)  : lexer txt'
-    Just ('/', txt') -> TOp div' : lexer txt'
+    Just ('(', txt') -> TLParen    : lexer txt'
+    Just (')', txt') -> TRParen    : lexer txt'
+    Just ('+', txt') -> TOp Plus   : lexer txt'
+    Just ('-', txt') -> TOp Minus  : lexer txt'
+    Just ('*', txt') -> TOp Times  : lexer txt'
+    Just ('/', txt') -> TOp Divide : lexer txt'
+    Just ('<', txt') -> case T.uncons txt' of
+                          Just ('=', txt'') -> TLte : lexer txt''
+                          _ -> errorWithoutStackTrace "Can't lex '<'"
     Just (t,   txt') -> let go | isSpace t = lexer (T.stripStart txt')
-                               | isDigit t = lexInt txt
-                               | otherwise = error $ "Can't lex character '" ++ t : "'"
+                               | isDigit t = lexNum  txt
+                               | isAlpha t = lexWord txt
+                               | otherwise = errorWithoutStackTrace $ "Can't lex '" ++ t : "'"
                          in go
 
-lexInt :: T.Text -> [Token]
-lexInt txt = TInt num : lexer rest
+lexWord :: T.Text -> [Token]
+lexWord txt
+  | word == "if"    = TIf : lexer txt'
+  | word == "true"  = TBool True  : lexer txt'
+  | word == "false" = TBool False : lexer txt'
+  | otherwise       = errorWithoutStackTrace $ "unrecognized text '" ++ T.unpack word ++ "'"
   where
-    (num, rest) = case decimal txt of
-                    Right (n, r) -> (n, r)
-                    Left _       -> error $ "Can't lex '" ++ T.unpack txt ++ "' (you should never see this error)"
+    (word, txt') = T.span isAlpha txt
+{-# INLINE lexWord #-}
 
-div' :: (Integral a) => a -> a -> a
-div' m n
-  | n == 0    = error "Error: Divide by zero"
-  | otherwise = div m n
+lexNum :: T.Text -> [Token]
+lexNum txt
+  | dots == 1 = TFloat float : lexer rest
+  | dots == 0 = TInt int : lexer rest
+  | otherwise = lexNumError
+  where
+    (num, rest) = T.span (\c -> isDigit c || c == '.') txt
+    lexNumError = errorWithoutStackTrace $ "couldn't lex number '" ++ T.unpack num ++ "'"
+    dots = T.count "." num
+    int = case decimal num of
+            Right (i, "") -> i
+            _ -> lexNumError
+    float = case double num of
+              Right (f, "") -> f
+              _ -> lexNumError

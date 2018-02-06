@@ -59,19 +59,19 @@ main = do
               , bgroup "parse" [ bench "parse1" $ nf parse tokens1
                                , bench "parse2" $ nf parse tokens2
                                , bench "parse3" $ nf parse tokens3
-                               --, bench "parse4" $ nf parse tokens4
+                               , bench "parse4" $ nf parse tokens4
                                , bench "parse5" $ nf parse tokens5
                                ]
-              , bgroup "inter" [ bench "eval1" $ nf interpret ast1
-                               , bench "eval2" $ nf interpret ast2
-                               , bench "eval3" $ nf interpret ast3
-                               --, bench "eval4" $ nf interpret ast4
-                               , bench "eval5" $ nf interpret ast5
+              , bgroup "inter" [ bench "inter1" $ nf interpret ast1
+                               , bench "inter2" $ nf interpret ast2
+                               , bench "inter3" $ nf interpret ast3
+                               , bench "inter4" $ nf interpret ast4
+                               , bench "inter5" $ nf interpret ast5
                                ]
               , bgroup "eval"  [ bench "eval1" $ nf evaluate rawInput1
                                , bench "eval2" $ nf evaluate rawInput2
                                , bench "eval3" $ nf evaluate rawInput3
-                               --, bench "eval4" $ nf evaluate rawInput4
+                               , bench "eval4" $ nf evaluate rawInput4
                                , bench "eval5" $ nf evaluate rawInput5
                                ]
               ]

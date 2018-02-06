@@ -37,4 +37,4 @@ main = do
 interpretFile :: String -> IO ()
 interpretFile file = do
   contents <- TIO.readFile file
-  print $ evaluate contents
+  TIO.putStrLn $ evaluate contents
