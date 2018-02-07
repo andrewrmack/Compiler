@@ -38,6 +38,16 @@ $ stack test
 
 ## Changelog
 
+### [assignment-02] - 2018-02-06
+#### Added
+- A lexer
+- A parser
+- An interpreter
+#### Changed
+- It now compiles things instead of spitting back text
+#### Known Bugs
+- still none
+
 ### [assignment-01] - 2018-01-29
 #### Added
 - Created the project
