@@ -1,5 +1,6 @@
 module Main where
 
+import Data.Maybe          (listToMaybe, fromMaybe)
 import Data.Semigroup      ((<>))
 import qualified Data.Text.IO as TIO
 import Data.Version        (showVersion)
@@ -8,7 +9,7 @@ import Options.Applicative
 import Interpreter
 import Paths_compiler      (version)
 
-data Args = Args { versionFlag :: Bool, input :: FilePath }
+data Args = Args { versionFlag :: Bool, input :: [FilePath] }
 
 parseVersionFlag :: Parser Bool
 parseVersionFlag = switch
@@ -16,8 +17,8 @@ parseVersionFlag = switch
  <> short 'v'
  <> help "Show the version number")
 
-parseFileName :: Parser String
-parseFileName = argument str (metavar "FILE")
+parseFileName :: Parser [String]
+parseFileName = many $ argument str (metavar "FILE")
 
 parseArgs :: Parser Args
 parseArgs = Args <$> parseVersionFlag <*> parseFileName
@@ -27,8 +28,9 @@ main = do
   (Args ver file) <- execParser opts
   if ver
   then putStrLn $ "compiler, version " ++ showVersion version
-  else interpretFile file
+  else interpretFile (fromMaybe fileError (listToMaybe file))
   where
+    fileError = errorWithoutStackTrace "No file given"
     opts = info (parseArgs <**> helper)
       ( fullDesc
      <> progDesc "Print command line arguments on separate lines"
