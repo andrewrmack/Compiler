@@ -18,10 +18,10 @@ data Token =
   | TRParen
   | TLte
   | TIf
-  | TOp Op
-  | TInt Integer
-  | TFloat Double
-  | TBool Bool
+  | TOp    !Op
+  | TBool  !Bool
+  | TInt   {-# UNPACK #-} !Int
+  | TFloat {-# UNPACK #-} !Double
   deriving (Generic)
 
 instance NFData Op

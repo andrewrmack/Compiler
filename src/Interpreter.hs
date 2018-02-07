@@ -8,9 +8,9 @@ import Lexer
 import Parser
 
 data Value =
-    VInt Integer
-  | VFloat Double
-  | VBool Bool
+    VInt   {-# UNPACK #-} !Int
+  | VFloat {-# UNPACK #-} !Double
+  | VBool  !Bool
   deriving (Generic)
 
 instance NFData Value
@@ -55,11 +55,10 @@ floatOp :: Op -> (Double -> Double -> Double)
 floatOp Plus = (+)
 floatOp Minus = (-)
 floatOp Times = (*)
-floatOp Divide = \n m -> if n == 0 then zeroError else n / m
-  where zeroError = errorWithoutStackTrace "Error: Divide by zero"
+floatOp Divide = (/)
 {-# INLINE floatOp #-}
 
-intOp :: Op -> (Integer -> Integer -> Integer)
+intOp :: Op -> (Int -> Int -> Int)
 intOp Plus = (+)
 intOp Minus = (-)
 intOp Times = (*)

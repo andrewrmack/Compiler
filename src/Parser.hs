@@ -6,13 +6,14 @@ import GHC.Generics    (Generic)
 
 import Lexer
 
+-- n.b. No strictness in branches of EIf to save work.
 data Expr =
-    EInt Integer
-  | EFloat Double
-  | EBool Bool
-  | EIf Expr Expr Expr
-  | ELte Expr Expr
-  | EOp Op Expr Expr
+    EInt   {-# UNPACK #-}!Int
+  | EFloat {-# UNPACK #-} !Double
+  | EBool  !Bool
+  | EOp    !Op !Expr !Expr
+  | ELte   !Expr !Expr
+  | EIf    !Expr Expr Expr
   deriving (Generic)
 
 instance NFData Expr
