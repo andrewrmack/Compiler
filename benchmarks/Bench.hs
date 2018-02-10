@@ -2,25 +2,25 @@ import Control.DeepSeq   (rnf)
 import qualified Control.Exception as E
 import Criterion.Main
 import Data.List         (intercalate)
-import qualified Data.Text as T
+import qualified Data.ByteString.Lazy.Char8 as BLC
 import Lexer
 import Parser
 import Interpreter
 
 -- rawInput1 tests the elimination of whitespace by the lexer
-rawInput1 = T.pack $ intercalate (replicate (2^16) ' ') ["(", "+", "23", "12", ")"]
+rawInput1 = BLC.pack $ intercalate (replicate (2^16) ' ') ["(", "+", "23", "12", ")"]
 
 -- rawInput2 tests parsing of deeply nested addition on the left
-rawInput2 = T.pack $ foldl (\acc x -> "(+ " ++ acc ++ " " ++ show x ++ ")") "1" [1..2^10]
+rawInput2 = BLC.pack $ foldl (\acc x -> "(+ " ++ acc ++ " " ++ show x ++ ")") "1" [1..2^10]
 
 -- rawInput3 tests parsing of deeply nested addition on the right
-rawInput3 = T.pack $ foldr (\x acc -> "(+ " ++ show x ++ " " ++ acc ++ ")") "1" [1..2^10]
+rawInput3 = BLC.pack $ foldr (\x acc -> "(+ " ++ show x ++ " " ++ acc ++ ")") "1" [1..2^10]
 
 -- rawInput4 is a more normal construction
-rawInput4 = T.pack "(+ (+ 1 2) (+ 3 4))"
+rawInput4 = BLC.pack "(+ (+ 1 2) (+ 3 4))"
 
 -- rawInput5 test lexing and evaluation of large constants
-rawInput5 = T.pack $ "(+ " ++ show (2^5000 + 123456) ++ " " ++ show (5^9000 - 567434532) ++ ")"
+rawInput5 = BLC.pack $ "(+ " ++ show (2^5000 + 123456) ++ " " ++ show (5^9000 - 567434532) ++ ")"
 
 tokens1 = lexer rawInput1
 tokens2 = lexer rawInput2

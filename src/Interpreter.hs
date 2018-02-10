@@ -2,10 +2,13 @@
 module Interpreter (evaluate, interpret) where
 
 import Control.DeepSeq
+import Data.ByteString.Lazy     (ByteString)
+import Data.Text                (Text)
 import qualified Data.Text as T
-import GHC.Generics (Generic)
+import GHC.Generics             (Generic)
 import Lexer
 import Parser
+import Lang
 
 data Value =
     VInt   {-# UNPACK #-} !Int
@@ -17,13 +20,13 @@ instance NFData Value
 
 -- n.b. VBools are handled differently because the object language uses
 -- lowercase for booleans, whereas Haskell uses uppercase identifiers.
-showValue :: Value -> T.Text
+showValue :: Value -> Text
 showValue (VInt i)   = T.pack $ show i
 showValue (VFloat f) = T.pack $ show f
 showValue (VBool b)  = if b then "true" else "false"
 {-# INLINE showValue #-}
 
-evaluate :: T.Text -> T.Text
+evaluate :: ByteString -> Text
 evaluate = showValue . interpret . parse . lexer
 {-# INLINE evaluate #-}
 

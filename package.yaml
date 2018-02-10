@@ -20,8 +20,11 @@ library:
     - alex
     - happy
   dependencies:
-    - lens
+    - array
+    - bytestring
+    - bytestring-lexing
     - deepseq
+    - lens
     - text
   ghc-options:
     - -O2
@@ -38,6 +41,7 @@ executables:
     - -O2
     - -Wall
     dependencies:
+    - bytestring
     - compiler
     - optparse-applicative
     - text
@@ -63,6 +67,7 @@ benchmarks:
     source-dirs:         benchmarks
     dependencies:
     - base
+    - bytestring
     - compiler
     - criterion
     - deepseq

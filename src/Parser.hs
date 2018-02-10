@@ -1,22 +1,7 @@
-{-# LANGUAGE DeriveGeneric #-}
-module Parser (parse, Expr(..)) where
+{-# LANGUAGE Safe #-}
+module Parser (parse, Expr(..), ppExpr) where
 
-import Control.DeepSeq (NFData)
-import GHC.Generics    (Generic)
-
-import Lexer
-
--- n.b. No strictness in branches of EIf to save work.
-data Expr =
-    EInt   {-# UNPACK #-}!Int
-  | EFloat {-# UNPACK #-} !Double
-  | EBool  !Bool
-  | EOp    !Op !Expr !Expr
-  | ELte   !Expr !Expr
-  | EIf    !Expr Expr Expr
-  deriving (Generic)
-
-instance NFData Expr
+import Lang
 
 parse :: [Token] -> Expr
 parse ts =
