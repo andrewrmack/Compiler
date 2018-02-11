@@ -30,6 +30,7 @@ $white+  ;
 if       { \p s -> locate p TIf }
 true     { \p s -> locate p (TBool True) }
 false    { \p s -> locate p (TBool False) }
+NaN      { \p s -> locate p (TFloat (0.0 / 0.0)) }
 @float   { \p s -> locate p (TFloat (lexFloat p s)) }
 @decimal { \p s -> locate p (TInt (lexInt p s)) }
 
