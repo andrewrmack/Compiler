@@ -3,12 +3,13 @@
 {-# LANGUAGE Safe #-}
 module Lang
   ( Token(..)
-  , Op(..)
   , Expr(..)
   , Located(..)
-  , ppOp
+  , Op(..)
+  , Value(..)
   , ppTokenList
   , ppExpr
+  , ppValue
   ) where
 
 import Control.DeepSeq          (NFData)
@@ -16,63 +17,98 @@ import Data.Text                (Text)
 import qualified Data.Text as T
 import GHC.Generics             (Generic)
 
-data Op = Plus | Minus | Times | Divide deriving (Generic)
+data Value =
+    VEmpty
+  | VInt   {-# UNPACK #-} !Int
+  | VFloat {-# UNPACK #-} !Double
+  | VBool  !Bool
+  deriving (Generic)
 
-data Token =
-    TLParen
-  | TRParen
-  | TLte
-  | TIf
-  | TOp     !Op
-  | TBool   !Bool
-  | TInt    {-# UNPACK #-} !Int
-  | TFloat  {-# UNPACK #-} !Double
+instance NFData Value
+
+data Op =
+    Plus
+  | Minus
+  | Times
+  | Divide
+  | Lte
   deriving (Generic)
 
 instance NFData Op
-instance NFData Token
 
--- n.b. No strictness in branches of EIf to save work.
-data Expr =
-    EInt   {-# UNPACK #-}!Int
-  | EFloat {-# UNPACK #-} !Double
-  | EBool  !Bool
-  | EOp    !Op !Expr !Expr
-  | ELte   !Expr !Expr
-  | EIf    !Expr Expr Expr
+data Token a =
+    TLParen a
+  | TRParen a
+  | TLte    a
+  | TIf     a
+  | TThen   a
+  | TElse   a
+  | TPlus   a
+  | TMinus  a
+  | TTimes  a
+  | TDivide a
+  | TBool   a !Bool
+  | TInt    a {-# UNPACK #-} !Int
+  | TFloat  a {-# UNPACK #-} !Double
   deriving (Generic)
 
-instance NFData Expr
+instance (NFData a) => NFData (Token a)
 
-data Located a = Located {-# UNPACK #-} !Int -- Row
-                         {-# UNPACK #-} !Int -- Column
-                         a
+-- n.b. No strictness in branches of EIf to save work.
+data Expr a =
+    EEmpty
+  | EInt    a {-# UNPACK #-} !Int
+  | EFloat  a {-# UNPACK #-} !Double
+  | EBool   a !Bool
+  | EOp     a !Op !(Expr a) !(Expr a)
+  | EIf     a !(Expr a) (Expr a) (Expr a)
+  deriving (Generic)
 
-ppExpr :: Expr -> Text
-ppExpr (EInt n)       = T.pack $ show n
-ppExpr (EFloat f)     = T.pack $ show f
-ppExpr (EBool True)   = "true"
-ppExpr (EBool False)  = "false"
-ppExpr (EOp o e1 e2)  = T.concat ["(", ppOp o, " ", ppExpr e1, " ", ppExpr e2, ")"]
-ppExpr (ELte e1 e2)   = T.concat ["(<= ", ppExpr e1, " ", ppExpr e2, ")"]
-ppExpr (EIf e1 e2 e3) = T.concat ["(if ", ppExpr e1, " ", ppExpr e2, " ", ppExpr e3, ")"]
+instance (NFData a) => NFData (Expr a)
+
+data Located = Located {-# UNPACK #-} !Int -- Row
+                       {-# UNPACK #-} !Int -- Column
 
 ppOp :: Op -> Text
 ppOp Plus   = "+"
 ppOp Minus  = "-"
 ppOp Times  = "*"
 ppOp Divide = "/"
+ppOp Lte    = "<="
 
-ppToken :: Token -> Text
-ppToken TLParen       = "("
-ppToken TRParen       = ")"
-ppToken TLte          = "<="
-ppToken TIf           = "if"
-ppToken (TOp o)       = ppOp o
-ppToken (TBool True)  = "true"
-ppToken (TBool False) = "false"
-ppToken (TInt n)      = T.pack $ show n
-ppToken (TFloat f)    = T.pack $ show f
+ppExpr :: Expr a -> Text
+ppExpr EEmpty            = ""
+ppExpr (EInt _ n)        = T.pack $ show n
+ppExpr (EFloat _ f)      = T.pack $ show f
+ppExpr (EBool _ True)    = "true"
+ppExpr (EBool _ False)   = "false"
+ppExpr (EOp _ o e1 e2)   = T.concat ["(", ppOp o, " ",  ppExpr e1, " ", ppExpr e2, ")"]
+ppExpr (EIf _ e1 e2 e3)  = T.concat ["(if ", ppExpr e1, " ", ppExpr e2, " ", ppExpr e3, ")"]
 
-ppTokenList :: [Token] -> Text
+ppToken :: Token a -> Text
+ppToken (TLParen _)     = "("
+ppToken (TRParen _)     = ")"
+ppToken (TLte _)        = "<="
+ppToken (TIf _)         = "if"
+ppToken (TThen _)       = "then"
+ppToken (TElse _)       = "else"
+ppToken (TPlus _)       = "+"
+ppToken (TMinus _)      = "-"
+ppToken (TTimes _)      = "*"
+ppToken (TDivide _)     = "/"
+ppToken (TBool _ True)  = "true"
+ppToken (TBool _ False) = "false"
+ppToken (TInt _ n)      = T.pack $ show n
+ppToken (TFloat _ f)    = T.pack $ show f
+
+ppTokenList :: [Token a] -> Text
 ppTokenList ts = T.concat ["[", T.intercalate ", " (map ppToken ts), "]"]
+
+-- n.b. VBools are handled differently because the object language uses
+-- lowercase for booleans, whereas Haskell uses uppercase identifiers.
+ppValue :: Value -> Text
+ppValue VEmpty     = ""
+ppValue (VInt i)   = T.pack $ show i
+ppValue (VFloat f) = T.pack $ show f
+ppValue (VBool b)  = if b then "true" else "false"
+{-# INLINE ppValue #-}

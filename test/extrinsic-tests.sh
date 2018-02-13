@@ -11,10 +11,24 @@ do
   echo -n $infile
   echo "'"
 
+  if [ -e $lexfile ]
+  then
+      diff <(stack exec compiler \-\- --lex $fn) $lexfile || (>&2 echo "Failed lexing"; exit 1)
+  else
+      >&2 echo "No such file '${lexfile}'"
+      exit 1;
+  fi
+
+  if [ -e $parsefile ]
+  then
+      diff <(stack exec compiler \-\- --parse $fn) $parsefile || (>&2 echo "Failed parsing"; exit 1)
+  else
+      >&2 echo "No such file '${parsefile}'"
+      exit 1;
+  fi
+
   if [ -e $outfile ]
   then
-      diff <(stack exec compiler \-\- --lex $fn) $lexfile || (>&2 echo "Failed lex"; exit 1)
-      diff <(stack exec compiler \-\- --parse $fn) $fn || (>&2 echo "Failed parse"; exit 1)
       diff <(stack exec compiler \-\- $fn) $outfile || (>&2 echo "Failed evaluation"; exit 1)
   else
       >&2 echo "No such file '${outfile}'"
