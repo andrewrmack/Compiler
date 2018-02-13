@@ -1,5 +1,5 @@
 name:                compiler
-version:             0.2.0
+version:             0.3.0
 github:              "andrewrmack/compiler"
 license:             BSD3
 author:              "Andrew Mack"

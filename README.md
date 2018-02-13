@@ -1,7 +1,6 @@
 # compiler - Andrew Mack
 This is a being written for compiler for
 [CSC-312](http://www.cs.grinnell.edu/~osera/courses/csc312/18sp/).
-Currently, it doesn't actually compile anything.
 
 ## Building
 ### Getting Stack
@@ -37,6 +36,21 @@ $ stack test
 ```
 
 ## Changelog
+
+### [assignment-03] - 2018-02-12
+#### Added
+- Somewhat accurate location information in errors
+#### Changed
+- The test suite is more robust
+- The syntax now uses infix notation
+    * The less than or equal to operator is non associative and binds the
+        loosest
+    * Addition and subtraction are left associative and bind tighter than less
+        than or equal to
+    * Multiplication and division are left associative and bind tighter than
+        addition and subtraction
+#### Known Bugs
+- still none
 
 ### [assignment-02] - 2018-02-06
 #### Added
