@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4aca8e05e85e9f0001465fcb6beb593faa056a5aee3fbde918ccd40d97358855
+-- hash: 3cfa3c83625d624e12edce8877b66c43b9b9d146cf0aa230dab774fdc810d470
 
 name:           compiler
 version:        0.2.0
@@ -40,6 +40,7 @@ library
       alex
     , happy
   exposed-modules:
+      Error
       Interpreter
       Lang
       Lexer
