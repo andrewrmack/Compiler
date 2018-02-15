@@ -42,6 +42,8 @@ data Token a =
   | TRParen a
   | TLte    a
   | TEqual  a
+  | TBSlash a
+  | TRArrow a
   | TIf     a
   | TThen   a
   | TElse   a
@@ -68,9 +70,11 @@ data Expr a =
   | EFloat  a {-# UNPACK #-} !Double
   | EVar    a !Name
   | EBool   a !Bool
+  | EApp    a !(Expr a) !(Expr a)
   | EOp     a !Op !(Expr a) !(Expr a)
   | EIf     a !(Expr a) (Expr a) (Expr a)
   | ELet    a !Name     (Expr a) (Expr a)
+  | ELam    a !Name     (Expr a)
   deriving (Generic)
 
 instance (NFData a) => NFData (Expr a)
@@ -92,15 +96,19 @@ ppExpr (EInt _ n)        = T.pack $ show n
 ppExpr (EFloat _ f)      = T.pack $ show f
 ppExpr (EBool _ True)    = "true"
 ppExpr (EBool _ False)   = "false"
+ppExpr (EApp _ e1 e2)    = T.concat ["(", ppExpr e1, " ", ppExpr e2, ")"]
 ppExpr (EOp _ o e1 e2)   = T.concat ["(", ppOp o, " ",  ppExpr e1, " ", ppExpr e2, ")"]
 ppExpr (EIf _ e1 e2 e3)  = T.concat ["(if ", ppExpr e1, " ", ppExpr e2, " ", ppExpr e3, ")"]
 ppExpr (ELet _ n e1 e2)  = T.concat ["(let (", n, " = ", ppExpr e1, ") ", ppExpr e2, ")"]
+ppExpr (ELam _ n e1)     = T.concat ["(\\", n, " -> ", ppExpr e1, ")"]
 
 ppToken :: Token a -> Text
 ppToken (TLParen _)     = "("
 ppToken (TRParen _)     = ")"
 ppToken (TLte _)        = "<="
 ppToken (TEqual _)      = "="
+ppToken (TBSlash _)     = "\\"
+ppToken (TRArrow _)     = "->"
 ppToken (TIf _)         = "if"
 ppToken (TThen _)       = "then"
 ppToken (TElse _)       = "else"

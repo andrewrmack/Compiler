@@ -34,6 +34,8 @@ $white+  ;
 \/       { \p s -> TDivide (locate p)                 }
 \<\=     { \p s -> TLte    (locate p)                 }
 \=       { \p s -> TEqual  (locate p)                 }
+\\       { \p s -> TBSlash (locate p)                 }
+\-\>     { \p s -> TRArrow (locate p)                 }
 if       { \p s -> TIf     (locate p)                 }
 then     { \p s -> TThen   (locate p)                 }
 else     { \p s -> TElse   (locate p)                 }
