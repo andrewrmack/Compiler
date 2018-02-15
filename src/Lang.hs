@@ -7,6 +7,7 @@ module Lang
   , Located(..)
   , Op(..)
   , Value(..)
+  , Name
   , ppTokenList
   , ppExpr
   , ppValue
@@ -40,28 +41,36 @@ data Token a =
     TLParen a
   | TRParen a
   | TLte    a
+  | TEqual  a
   | TIf     a
   | TThen   a
   | TElse   a
+  | TLet    a
+  | TIn     a
   | TPlus   a
   | TMinus  a
   | TTimes  a
   | TDivide a
   | TBool   a !Bool
+  | TId     a !Name
   | TInt    a {-# UNPACK #-} !Int
   | TFloat  a {-# UNPACK #-} !Double
   deriving (Generic)
 
 instance (NFData a) => NFData (Token a)
 
+type Name = Text
+
 -- n.b. No strictness in branches of EIf to save work.
 data Expr a =
     EEmpty
   | EInt    a {-# UNPACK #-} !Int
   | EFloat  a {-# UNPACK #-} !Double
+  | EVar    a !Name
   | EBool   a !Bool
   | EOp     a !Op !(Expr a) !(Expr a)
   | EIf     a !(Expr a) (Expr a) (Expr a)
+  | ELet    a !Name     (Expr a) (Expr a)
   deriving (Generic)
 
 instance (NFData a) => NFData (Expr a)
@@ -78,26 +87,32 @@ ppOp Lte    = "<="
 
 ppExpr :: Expr a -> Text
 ppExpr EEmpty            = ""
+ppExpr (EVar _ n)        = n
 ppExpr (EInt _ n)        = T.pack $ show n
 ppExpr (EFloat _ f)      = T.pack $ show f
 ppExpr (EBool _ True)    = "true"
 ppExpr (EBool _ False)   = "false"
 ppExpr (EOp _ o e1 e2)   = T.concat ["(", ppOp o, " ",  ppExpr e1, " ", ppExpr e2, ")"]
 ppExpr (EIf _ e1 e2 e3)  = T.concat ["(if ", ppExpr e1, " ", ppExpr e2, " ", ppExpr e3, ")"]
+ppExpr (ELet _ n e1 e2)  = T.concat ["(let (", n, " = ", ppExpr e1, ") ", ppExpr e2, ")"]
 
 ppToken :: Token a -> Text
 ppToken (TLParen _)     = "("
 ppToken (TRParen _)     = ")"
 ppToken (TLte _)        = "<="
+ppToken (TEqual _)      = "="
 ppToken (TIf _)         = "if"
 ppToken (TThen _)       = "then"
 ppToken (TElse _)       = "else"
+ppToken (TLet _)        = "let"
+ppToken (TIn _)         = "in"
 ppToken (TPlus _)       = "+"
 ppToken (TMinus _)      = "-"
 ppToken (TTimes _)      = "*"
 ppToken (TDivide _)     = "/"
 ppToken (TBool _ True)  = "true"
 ppToken (TBool _ False) = "false"
+ppToken (TId _ t)       = t
 ppToken (TInt _ n)      = T.pack $ show n
 ppToken (TFloat _ f)    = T.pack $ show f
 

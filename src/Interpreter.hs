@@ -13,9 +13,11 @@ evaluate = ppValue . interpret . parse . lexer
 
 interpret :: Expr Located -> Value
 interpret EEmpty = VEmpty
+interpret (EVar l _) = locatedError l "Cannot evaluate unbound variable"
 interpret (EInt _ n) = VInt n
 interpret (EBool _ b) = VBool b
 interpret (EFloat _ f) = VFloat f
+interpret (ELet _ n e1 e2) = interpret $ substitute n e1 e2
 interpret (EIf l e1 e2 e3) = if b1 then interpret e2 else interpret e3
   where
     b1 = case interpret e1 of
@@ -28,6 +30,20 @@ interpret (EOp l op e1 e2) =
     (VInt n1, VFloat f2)   -> floatOp op (fromIntegral n1) f2
     (VInt n1, VInt n2)     -> intOp l op n1 n2
     _ -> locatedError l "Cannot perform arithmetic operation on non number"
+
+substitute :: Name -> Expr a -> Expr a -> Expr a
+substitute _ _ EEmpty = EEmpty
+substitute _ _ e@(EInt _ _) = e
+substitute _ _ e@(EFloat _ _) = e
+substitute _ _ e@(EBool _ _) = e
+substitute n e (ELet l x e1 e2) = ELet l x (substitute n e e1) (substitute n e e2)
+substitute n e (EOp l o e1 e2) = EOp l o (substitute n e e1) (substitute n e e2)
+substitute n e (EIf l e1 e2 e3) = EIf l (substitute n e e1)
+                                        (substitute n e e2)
+                                        (substitute n e e3)
+substitute n e e'@(EVar l x)
+  | x == n = e
+  | otherwise = e'
 
 floatOp :: Op -> Double -> Double -> Value
 floatOp Plus   f1 f2 = VFloat $ f1 +  f2
