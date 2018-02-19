@@ -50,9 +50,11 @@ substitute _ _ EEmpty = EEmpty
 substitute _ _ e@(EInt _ _) = e
 substitute _ _ e@(EFloat _ _) = e
 substitute _ _ e@(EBool _ _) = e
-substitute n e (ELam l x e1) = ELam l x (substitute n e e1)
+substitute n e (ELam l x e1) = ELam l x $ if x == n then e1 else substitute n e e1
 substitute n e (EApp l e1 e2) = EApp l (substitute n e e1) (substitute n e e2)
-substitute n e (ELet l x e1 e2) = ELet l x (substitute n e e1) (substitute n e e2)
+substitute n e (ELet l x e1 e2) = if x == n
+                                  then ELet l x e1 e2
+                                  else ELet l x (substitute n e e1) (substitute n e e2)
 substitute n e (EOp l o e1 e2) = EOp l o (substitute n e e1) (substitute n e e2)
 substitute n e (EIf l e1 e2 e3) = EIf l (substitute n e e1)
                                         (substitute n e e2)
