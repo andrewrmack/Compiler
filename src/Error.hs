@@ -1,8 +1,8 @@
 module Error where
 
-import Lang (Located(..))
+import Location (Location(..))
 
-locatedError :: Located -> String -> a
-locatedError (Located r c) msg = errorWithoutStackTrace msg'
+locatedError :: Location -> String -> a
+locatedError (Location r c) msg = errorWithoutStackTrace msg'
   where
     msg' = msg ++ " at (line " ++ show r ++ ", column " ++ show c ++ ")"

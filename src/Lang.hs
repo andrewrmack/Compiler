@@ -4,7 +4,6 @@
 module Lang
   ( Token(..)
   , Expr(..)
-  , Located(..)
   , Op(..)
   , Value(..)
   , Name
@@ -42,7 +41,8 @@ data Token a =
   | TRParen a
   | TLte    a
   | TEqual  a
-  | TBSlash a
+  | TFun    a
+  | TFix    a
   | TRArrow a
   | TIf     a
   | TThen   a
@@ -74,13 +74,11 @@ data Expr a =
   | EOp     a !Op !(Expr a) !(Expr a)
   | EIf     a !(Expr a) (Expr a) (Expr a)
   | ELet    a !Name     (Expr a) (Expr a)
+  | EFix    a !Name    !Name     (Expr a)
   | ELam    a !Name     (Expr a)
   deriving (Generic)
 
 instance (NFData a) => NFData (Expr a)
-
-data Located = Located {-# UNPACK #-} !Int -- Row
-                       {-# UNPACK #-} !Int -- Column
 
 ppOp :: Op -> Text
 ppOp Plus   = "+"
@@ -90,30 +88,32 @@ ppOp Divide = "/"
 ppOp Lte    = "<="
 
 ppExpr :: Expr a -> Text
-ppExpr EEmpty            = ""
-ppExpr (EVar _ n)        = n
-ppExpr (EInt _ n)        = T.pack $ show n
-ppExpr (EFloat _ f)      = T.pack $ show f
-ppExpr (EBool _ True)    = "true"
-ppExpr (EBool _ False)   = "false"
-ppExpr (EApp _ e1 e2)    = T.concat ["(", ppExpr e1, " ", ppExpr e2, ")"]
-ppExpr (EOp _ o e1 e2)   = T.concat ["(", ppOp o, " ",  ppExpr e1, " ", ppExpr e2, ")"]
-ppExpr (EIf _ e1 e2 e3)  = T.concat ["(if ", ppExpr e1, " ", ppExpr e2, " ", ppExpr e3, ")"]
-ppExpr (ELet _ n e1 e2)  = T.concat ["(let (", n, " = ", ppExpr e1, ") ", ppExpr e2, ")"]
-ppExpr (ELam _ n e1)     = T.concat ["(\\", n, " -> ", ppExpr e1, ")"]
+ppExpr EEmpty              = ""
+ppExpr (EVar _ n)          = n
+ppExpr (EInt _ n)          = T.pack $ show n
+ppExpr (EFloat _ f)        = T.pack $ show f
+ppExpr (EBool _ True)      = "true"
+ppExpr (EBool _ False)     = "false"
+ppExpr (EApp _ e1 e2)      = T.concat ["(", ppExpr e1, " ", ppExpr e2, ")"]
+ppExpr (EOp _ o e1 e2)     = T.concat ["(", ppOp o, " ",  ppExpr e1, " ", ppExpr e2, ")"]
+ppExpr (EIf _ e1 e2 e3)    = T.concat ["(if ", ppExpr e1, " ", ppExpr e2, " ", ppExpr e3, ")"]
+ppExpr (ELet _ n e1 e2)    = T.concat ["(let (", n, " = ", ppExpr e1, ") ", ppExpr e2, ")"]
+ppExpr (EFix _ f n e)      = T.concat ["(fix ", f, " ", n, " -> ", ppExpr e, ")"]
+ppExpr (ELam _ n e)        = T.concat ["(fun ", n, " -> ", ppExpr e, ")"]
 
 ppToken :: Token a -> Text
 ppToken (TLParen _)     = "("
 ppToken (TRParen _)     = ")"
 ppToken (TLte _)        = "<="
 ppToken (TEqual _)      = "="
-ppToken (TBSlash _)     = "\\"
 ppToken (TRArrow _)     = "->"
 ppToken (TIf _)         = "if"
 ppToken (TThen _)       = "then"
 ppToken (TElse _)       = "else"
 ppToken (TLet _)        = "let"
 ppToken (TIn _)         = "in"
+ppToken (TFun _)        = "fun"
+ppToken (TFix _)        = "fix"
 ppToken (TPlus _)       = "+"
 ppToken (TMinus _)      = "-"
 ppToken (TTimes _)      = "*"
