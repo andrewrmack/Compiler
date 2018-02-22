@@ -7,6 +7,7 @@ import qualified Data.ByteString.Lazy as BL
 import Data.Version        (showVersion)
 import Options.Applicative
 
+import Error
 import Lang
 import Lexer
 import Parser
@@ -74,4 +75,8 @@ parseFile file = do
 interpretFile :: String -> IO ()
 interpretFile file = do
   contents <- BL.readFile file
-  TIO.putStrLn $ evaluate contents
+  let evaled   = evaluate contents
+  let warnings = getWarnings evaled
+  let results  = runCompiler evaled
+  showWarnings warnings
+  TIO.putStrLn results

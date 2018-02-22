@@ -1,68 +1,94 @@
 module Interpreter (evaluate, interpret) where
 
 import Data.ByteString.Lazy     (ByteString)
-import Data.Text                (Text)
+import Data.Text                (Text, unpack)
 import Error
 import Lexer
 import Parser
 import Lang
 import Location
 
-evaluate :: ByteString -> Text
-evaluate = ppValue . interpret . parse . lexer
+evaluate :: ByteString -> Compiler Text
+evaluate = fmap ppValue . interpret . parse . lexer
 {-# INLINE evaluate #-}
 
-interpret :: Expr Location -> Value
-interpret e = case simplify e of
-                EEmpty _   -> VEmpty
-                EInt _ n   -> VInt n
-                EBool _ b  -> VBool b
-                EFloat _ f -> VFloat f
-                e' -> locatedError (locate e') "Expression could not be reduced to a value"
+interpret :: Expr Location -> Compiler Value
+interpret e = do
+  e' <- simplify e
+  case e' of
+    EEmpty _   -> return VEmpty
+    EInt _ n   -> return $ VInt n
+    EBool _ b  -> return $ VBool b
+    EFloat _ f -> return $ VFloat f
+    e'' -> locatedError (locate e'') "Expression could not be reduced to a value"
 
-simplify :: Expr Location -> Expr Location
-simplify e@(EEmpty _) = e
-simplify v@(EVar _ _) = v
-simplify n@(EInt _ _) = n
-simplify b@(EBool _ _) = b
-simplify f@(EFloat _ _) = f
-simplify (ELet _ n e1 e2) = simplify $ substitute n e1 e2
-simplify l@ELam{} = l
-simplify l@EFix{} = l
-simplify (EApp l e1 e2) =
-  case simplify e1 of
-    ELam _ n e -> simplify $ substitute n e2 e
-    EFix l' f x e -> simplify $ substitute f (EFix l' f x e) (substitute x e2 e)
+simplify :: Expr Location -> Compiler (Expr Location)
+simplify e@(EEmpty _)   = return e
+simplify v@(EVar _ _)   = return v
+simplify n@(EInt _ _)   = return n
+simplify b@(EBool _ _)  = return b
+simplify f@(EFloat _ _) = return f
+simplify (ELet _ n e1 e2) = substitute n e1 e2 >>= simplify
+simplify l@ELam{} = return l
+simplify l@EFix{} = return l
+simplify (EApp l e1 e2) = do
+  e1' <- simplify e1
+  case e1' of
+    ELam _ n e -> substitute n e2 e >>= simplify
+    EFix l' f x e -> substitute x e2 e >>= substitute f (EFix l' f x e) >>= simplify
     _ -> locatedError l "Cannot apply non-lambda to expression"
-simplify (EIf l e1 e2 e3) = if b1 then simplify e2 else simplify e3
-  where
-    b1 = case simplify e1 of
-           (EBool _ b) -> b
-           _ -> locatedError l "Cannot evaluate 'if' with non-boolean condition"
-simplify (EOp l op e1 e2) =
-  case (simplify e1, simplify e2) of
-    (EFloat _ f1, EFloat _ f2) -> floatOp l op f1 f2
-    (EFloat _ f1, EInt _ n2)   -> floatOp l op f1 (fromIntegral n2)
-    (EInt _ n1, EFloat _ f2)   -> floatOp l op (fromIntegral n1) f2
-    (EInt _ n1, EInt _ n2)     -> intOp l op n1 n2
+simplify (EIf l e1 e2 e3) = do
+  e1' <- simplify e1
+  let b1 = case e1' of { (EBool _ b) -> b; _ -> locatedError l "Cannot evaluate 'if' with non-boolean condition" }
+  if b1 then simplify e2 else simplify e3
+simplify (EOp l op e1 e2) = do
+  e1' <- simplify e1
+  e2' <- simplify e2
+  case (e1', e2') of
+    (EFloat _ f1, EFloat _ f2) -> return $ floatOp l op f1 f2
+    (EFloat _ f1, EInt _ n2)   -> return $ floatOp l op f1 (fromIntegral n2)
+    (EInt _ n1, EFloat _ f2)   -> return $ floatOp l op (fromIntegral n1) f2
+    (EInt _ n1, EInt _ n2)     -> return $ intOp l op n1 n2
     _ -> locatedError l "Cannot perform arithmetic operation on non number"
 
-substitute :: Name -> Expr a -> Expr a -> Expr a
-substitute _ _ e@(EEmpty _)     = e
-substitute _ _ e@(EInt _ _)     = e
-substitute _ _ e@(EFloat _ _)   = e
-substitute _ _ e@(EBool _ _)    = e
-substitute n e (ELam l x e1)    = ELam l x $ if x == n then e1 else substitute n e e1
-substitute n e (EFix l f x e1)  = EFix l f x $ if x == n || x == f then e1 else substitute n e e1
-substitute n e (EApp l e1 e2)   = EApp l (substitute n e e1) (substitute n e e2)
-substitute n e (EOp l o e1 e2)  = EOp l o (substitute n e e1) (substitute n e e2)
-substitute n e (EIf l e1 e2 e3) = EIf l (substitute n e e1) (substitute n e e2) (substitute n e e3)
-substitute n e (ELet l x e1 e2) = if x == n
-                                  then ELet l x e1 e2
-                                  else ELet l x (substitute n e e1) (substitute n e e2)
+substitute :: Name -> Expr Location -> Expr Location -> Compiler (Expr Location)
+substitute _ _ e@(EEmpty _)     = return e
+substitute _ _ e@(EInt _ _)     = return e
+substitute _ _ e@(EFloat _ _)   = return e
+substitute _ _ e@(EBool _ _)    = return e
+substitute n e (ELam l x e1)
+  | x == n    = warnNameShadow l x >> return (ELam l x e1)
+  | otherwise = do
+    e1' <- substitute n e e1
+    return $ ELam l x e1'
+substitute n e (EFix l f x e1)
+  | x == n || x == f = warnNameShadow l x >> return (EFix l f x e1)
+  | otherwise = substitute n e e1
+substitute n e (EApp l e1 e2)   = do
+  e1' <- substitute n e e1
+  e2' <- substitute n e e2
+  return $ EApp l e1' e2'
+substitute n e (EOp l o e1 e2)  = do
+  e1' <- substitute n e e1
+  e2' <- substitute n e e2
+  return $ EOp l o e1' e2'
+substitute n e (EIf l e1 e2 e3) = do
+  e1' <- substitute n e e1
+  e2' <- substitute n e e2
+  e3' <- substitute n e e3
+  return $ EIf l e1' e2' e3'
+substitute n e (ELet l x e1 e2)
+  | x == n = warnNameShadow l x >> return (ELet l x e1 e2)
+  | otherwise = do
+    e1' <- substitute n e e1
+    e2' <- substitute n e e2
+    return $ ELet l x e1' e2'
 substitute n e e'@(EVar _ x)
-  | x == n    = e
-  | otherwise = e'
+  | x == n    = return e
+  | otherwise = return e'
+
+warnNameShadow :: Location -> Name -> Compiler ()
+warnNameShadow l n = logWarning l $ "Binding of " ++ unpack n ++ " shadows existing binding"
 
 floatOp :: Location -> Op -> Double -> Double -> Expr Location
 floatOp l Plus   f1 f2 = EFloat l $ f1 +  f2

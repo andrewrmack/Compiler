@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 06f370ba4925bf60b95bfda8d9c813a455de9a83b0c584dfcfe83171525c9369
+-- hash: ba22f82c791b74be8ec8eb8d2f61b496f3dde26443e1ffddf215b3d12c592edb
 
 name:           compiler
 version:        0.3.0
@@ -35,6 +35,7 @@ library
     , bytestring-lexing
     , deepseq
     , lens
+    , mtl
     , text
   build-tools:
       alex

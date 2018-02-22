@@ -25,6 +25,7 @@ library:
     - bytestring-lexing
     - deepseq
     - lens
+    - mtl
     - text
   ghc-options:
     - -O2
