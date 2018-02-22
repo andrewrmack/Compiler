@@ -1,18 +1,25 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE Safe #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Lang
   ( Token(..)
   , Expr(..)
   , Op(..)
   , Value(..)
   , Name
+  , ttag
+  , tbool
+  , tint
+  , tfloat
+  , tid
+  , etag
   , ppTokenList
   , ppExpr
   , ppValue
   ) where
 
 import Control.DeepSeq          (NFData)
+import Control.Lens             (makeLenses, makeLensesFor)
 import Data.Text                (Text)
 import qualified Data.Text as T
 import GHC.Generics             (Generic)
@@ -36,47 +43,52 @@ data Op =
 
 instance NFData Op
 
+type Name = Text
+
 data Token a =
-    TLParen a
-  | TRParen a
-  | TLte    a
-  | TEqual  a
-  | TFun    a
-  | TFix    a
-  | TRArrow a
-  | TIf     a
-  | TThen   a
-  | TElse   a
-  | TLet    a
-  | TIn     a
-  | TPlus   a
-  | TMinus  a
-  | TTimes  a
-  | TDivide a
-  | TBool   a !Bool
-  | TId     a !Name
-  | TInt    a {-# UNPACK #-} !Int
-  | TFloat  a {-# UNPACK #-} !Double
+    TLParen { _ttag :: a }
+  | TRParen { _ttag :: a }
+  | TLte    { _ttag :: a }
+  | TEqual  { _ttag :: a }
+  | TFun    { _ttag :: a }
+  | TFix    { _ttag :: a }
+  | TRArrow { _ttag :: a }
+  | TIf     { _ttag :: a }
+  | TThen   { _ttag :: a }
+  | TElse   { _ttag :: a }
+  | TLet    { _ttag :: a }
+  | TIn     { _ttag :: a }
+  | TPlus   { _ttag :: a }
+  | TMinus  { _ttag :: a }
+  | TTimes  { _ttag :: a }
+  | TDivide { _ttag :: a }
+  | TBool   { _ttag :: a, _tbool :: !Bool }
+  | TId     { _ttag :: a, _tid :: !Name }
+  | TInt    { _ttag :: a, _tint ::{-# UNPACK #-} !Int }
+  | TFloat  { _ttag :: a, _tfloat :: {-# UNPACK #-} !Double }
   deriving (Generic)
+
+makeLenses ''Token
 
 instance (NFData a) => NFData (Token a)
 
-type Name = Text
 
 -- n.b. No strictness in branches of EIf to save work.
 data Expr a =
-    EEmpty
-  | EInt    a {-# UNPACK #-} !Int
-  | EFloat  a {-# UNPACK #-} !Double
-  | EVar    a !Name
-  | EBool   a !Bool
-  | EApp    a !(Expr a) !(Expr a)
-  | EOp     a !Op !(Expr a) !(Expr a)
-  | EIf     a !(Expr a) (Expr a) (Expr a)
-  | ELet    a !Name     (Expr a) (Expr a)
-  | EFix    a !Name    !Name     (Expr a)
-  | ELam    a !Name     (Expr a)
+    EEmpty  { _etag :: a }
+  | EInt    { _etag :: a, _eint :: {-# UNPACK #-} !Int }
+  | EFloat  { _etag :: a, _efloat ::  {-# UNPACK #-} !Double }
+  | EVar    { _etag :: a, _evar :: !Name }
+  | EBool   { _etag :: a, _ebool :: !Bool }
+  | EApp    { _etag :: a, _eapp1 :: !(Expr a), _eapp2 :: !(Expr a) }
+  | EOp     { _etag :: a, _eop :: !Op, _eopp1 :: !(Expr a), _eopp2 :: !(Expr a) }
+  | EIf     { _etag :: a, _eif :: !(Expr a), _ethen :: Expr a, _eelse :: Expr a }
+  | ELet    { _etag :: a, _ename :: !Name, _ebind :: Expr a, _ein :: Expr a }
+  | EFix    { _etag :: a, _efun :: !Name, _evar :: !Name, _ebody :: Expr a }
+  | ELam    { _etag :: a, _evar :: !Name, _ebody :: Expr a }
   deriving (Generic)
+
+makeLensesFor [("_etag", "etag")] ''Expr
 
 instance (NFData a) => NFData (Expr a)
 
@@ -88,7 +100,7 @@ ppOp Divide = "/"
 ppOp Lte    = "<="
 
 ppExpr :: Expr a -> Text
-ppExpr EEmpty              = ""
+ppExpr (EEmpty _)          = ""
 ppExpr (EVar _ n)          = n
 ppExpr (EInt _ n)          = T.pack $ show n
 ppExpr (EFloat _ f)        = T.pack $ show f

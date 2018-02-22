@@ -14,14 +14,14 @@ evaluate = ppValue . interpret . parse . lexer
 
 interpret :: Expr Location -> Value
 interpret e = case simplify e of
-                EEmpty     -> VEmpty
+                EEmpty _   -> VEmpty
                 EInt _ n   -> VInt n
                 EBool _ b  -> VBool b
                 EFloat _ f -> VFloat f
-                _ -> errorWithoutStackTrace "Expression could not be reduced to a value"
+                e' -> locatedError (locate e') "Expression could not be reduced to a value"
 
 simplify :: Expr Location -> Expr Location
-simplify EEmpty = EEmpty
+simplify e@(EEmpty _) = e
 simplify v@(EVar _ _) = v
 simplify n@(EInt _ _) = n
 simplify b@(EBool _ _) = b
@@ -48,7 +48,7 @@ simplify (EOp l op e1 e2) =
     _ -> locatedError l "Cannot perform arithmetic operation on non number"
 
 substitute :: Name -> Expr a -> Expr a -> Expr a
-substitute _ _ EEmpty           = EEmpty
+substitute _ _ e@(EEmpty _)     = e
 substitute _ _ e@(EInt _ _)     = e
 substitute _ _ e@(EFloat _ _)   = e
 substitute _ _ e@(EBool _ _)    = e
