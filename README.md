@@ -35,7 +35,33 @@ To run the test suite, run
 $ stack test
 ```
 
+## Syntax
+The syntax is
+```
+exp := exp +  exp
+     | exp -  exp
+     | exp *  exp
+     | exp /  exp
+     | exp <= exp
+     | if exp then exp else exp
+     | let x = exp in exp
+     | fun x -> exp
+     | fix f x -> exp
+     | exp exp
+```
+
 ## Changelog
+
+### [assignment-04] - 2018-02-21
+#### Added
+- Let bindings and lambdas
+#### Changed
+- Operators now bind very loosely, to allow expressions like "3 + f 4" to be
+    parsed as "3 + (f 4)" rather than "(3 + f) 4", and following the syntax
+    given in the Haskell 2010 report. Precedence among the operators is
+    unchanged.
+#### Known Bugs
+- still none
 
 ### [assignment-03] - 2018-02-12
 #### Added
