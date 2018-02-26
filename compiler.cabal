@@ -2,10 +2,10 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ba22f82c791b74be8ec8eb8d2f61b496f3dde26443e1ffddf215b3d12c592edb
+-- hash: 955e36d7661c8acc3e4af3c469281d275f64b679bee87389d257fb5ff692cfc6
 
 name:           compiler
-version:        0.3.0
+version:        0.4.0
 description:    Please see the README on Github at <https://github.com/andrewrmack/compiler#readme>
 homepage:       https://github.com/andrewrmack/compiler#readme
 bug-reports:    https://github.com/andrewrmack/compiler/issues
