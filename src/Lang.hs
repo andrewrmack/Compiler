@@ -29,6 +29,8 @@ data Value =
   | VInt   {-# UNPACK #-} !Int
   | VFloat {-# UNPACK #-} !Double
   | VBool  !Bool
+  | VTuple [Value]
+  | VList [Value]
   deriving (Generic)
 
 instance NFData Value
@@ -155,8 +157,10 @@ ppTokenList ts = T.concat ["[", T.intercalate ", " (map ppToken ts), "]"]
 -- n.b. VBools are handled differently because the object language uses
 -- lowercase for booleans, whereas Haskell uses uppercase identifiers.
 ppValue :: Value -> Text
-ppValue VEmpty     = ""
-ppValue (VInt i)   = T.pack $ show i
-ppValue (VFloat f) = T.pack $ show f
-ppValue (VBool b)  = if b then "true" else "false"
+ppValue VEmpty      = ""
+ppValue (VInt i)    = T.pack $ show i
+ppValue (VFloat f)  = T.pack $ show f
+ppValue (VBool b)   = if b then "true" else "false"
+ppValue (VTuple es) = T.concat ["(", T.intercalate "," (map ppValue es), ")"]
+ppValue (VList es)  = T.concat ["[", T.intercalate "," (map ppValue es), "]"]
 {-# INLINE ppValue #-}

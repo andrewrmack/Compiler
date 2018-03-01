@@ -8,7 +8,6 @@ import Lang
 import Location
 }
 
-%expect 20
 %name parseRaw
 %tokentype { Token Location }
 %error { parseError }
@@ -22,6 +21,8 @@ import Location
       ')'     { TRParen _   }
       '['     { TLBrace _   }
       ']'     { TRBrace _   }
+      '::'    { TDColon _   }
+      ':'     { TColon  _   }
       ','     { TComma  _   }
       '<='    { TLte    _   }
       '='     { TEqual  _   }
@@ -44,6 +45,10 @@ import Location
 
 %%
 
+exp  :: { Expr Location }
+exp  : iexp '::' type     { $1                           }
+     | iexp               { $1                           }
+
 iexp :: { Expr Location }
 iexp : iexp '+'  iexp     { EOp (locate $2) Plus $1 $3   }
      | iexp '-'  iexp     { EOp (locate $2) Minus $1 $3  }
@@ -53,10 +58,10 @@ iexp : iexp '+'  iexp     { EOp (locate $2) Plus $1 $3   }
      | lexp               { $1                           }
 
 lexp :: { Expr Location }
-lexp : if iexp then iexp else iexp { EIf (locate $1) $2 $4 $6                  }
-     | let id '=' iexp in iexp     { ELet (locate $1) ($2^?!tid) $4 $6         }
-     | fun id '->' iexp            { ELam (locate $1) ($2^?!tid) $4            }
-     | fix id id '->' iexp         { EFix (locate $1) ($2^?!tid) ($3^?!tid) $5 }
+lexp : if exp then exp else exp    { EIf (locate $1) $2 $4 $6                  }
+     | let id '=' exp in exp       { ELet (locate $1) ($2^?!tid) $4 $6         }
+     | fun id '->' exp             { ELam (locate $1) ($2^?!tid) $4            }
+     | fix id id '->' exp          { EFix (locate $1) ($2^?!tid) ($3^?!tid) $5 }
      | fexp                        { $1                                        }
 
 fexp :: { Expr Location }
@@ -68,16 +73,27 @@ aexp : int                   { EInt (locate $1) ($1^?!tint)         }
      | float                 { EFloat (locate $1) ($1^?!tfloat)     }
      | bool                  { EBool (locate $1) ($1^?!tbool)       }
      | id                    { EVar (locate $1) ($1^?!tid)          }
-     | '(' iexp ',' exps ')' { ETuple (locate $1) ($2 : reverse $4) }
+     | '(' exp ',' exps ')'  { ETuple (locate $1) ($2 : reverse $4) }
      | '[' exps ']'          { EList (locate $1) (reverse $2)       }
      | '(' ')'               { ETuple (locate $1) []                }
-     | '(' iexp ')'          { $2                                   }
+     | '(' exp ')'           { $2                                   }
 
 exps :: { [Expr Location] }
 exps : {- empty -}          { []      }
-     | iexp                 { [$1]    }
-     | exps ',' iexp        { $3 : $1 }
+     | exp                  { [$1]    }
+     | exps ',' exp         { $3 : $1 }
 
+type :: { Int }
+type : btype '->' type    { 1 }
+     | btype              { 1 }
+
+btype :: { Int }
+bype  : btype atype {1}
+      | atype       {1}
+
+atype :: { Int }
+atype : id {1}
+      | '[' type ']' {1}
 
 {
 parse :: [Token Location] -> Expr Location

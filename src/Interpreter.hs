@@ -20,6 +20,8 @@ interpret e = do
     EInt _ n   -> return $ VInt n
     EBool _ b  -> return $ VBool b
     EFloat _ f -> return $ VFloat f
+    ETuple _ es -> VTuple <$> mapM interpret es
+    EList  _ es -> VList  <$> mapM interpret es
     e'' -> locatedError (locate e'') "Expression could not be reduced to a value"
 
 simplify :: Expr Location -> Compiler (Expr Location)
@@ -28,6 +30,8 @@ simplify v@(EVar _ _)   = return v
 simplify n@(EInt _ _)   = return n
 simplify b@(EBool _ _)  = return b
 simplify f@(EFloat _ _) = return f
+simplify (ETuple l es)  = ETuple l <$> mapM simplify es
+simplify (EList l es)   = EList  l <$> mapM simplify es
 simplify (ELet _ n e1 e2) = substitute n e1 e2 >>= simplify
 simplify l@ELam{} = return l
 simplify l@EFix{} = return l
@@ -56,6 +60,8 @@ substitute _ _ e@(EEmpty _)     = return e
 substitute _ _ e@(EInt _ _)     = return e
 substitute _ _ e@(EFloat _ _)   = return e
 substitute _ _ e@(EBool _ _)    = return e
+substitute n e (ETuple l es) = ETuple l <$> mapM (substitute n e) es
+substitute n e (EList  l es) = EList  l <$> mapM (substitute n e) es
 substitute n e (ELam l x e1)
   | x == n    = warnNameShadow l x >> return (ELam l x e1)
   | otherwise = do
