@@ -40,6 +40,7 @@ logWarning :: Location -> String -> Compiler ()
 logWarning l msg = modify (warnings %~ (locatedMessage Warning l msg :))
 
 locatedMessage :: MessageType -> Location -> String -> String
+locatedMessage t NoLocation msg = show t ++ ": " ++ msg ++ " at unknown location"
 locatedMessage t (Location r c) msg =
   show t ++ ": " ++ msg ++ " at (line " ++ show r ++ ", column " ++ show c ++ ")"
 

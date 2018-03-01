@@ -19,9 +19,11 @@ import Location
 
 $digit    = 0-9
 $lower    = [a-z]
+$upper    = [A-Z]
 $namechar = [a-zA-Z0-9'_] @decimal  = $digit+
 @float    = @decimal \. @decimal
-@name     = $lower $namechar*
+@lname    = $lower $namechar*
+@uname    = $upper $namechar*
 
 tokens :-
 
@@ -52,11 +54,16 @@ false    { \p s -> TBool   (loc p) False           }
 NaN      { \p s -> TFloat  (loc p) (0.0 / 0.0)     }
 @float   { \p s -> TFloat  (loc p) (lexFloat p s)  }
 @decimal { \p s -> TInt    (loc p) (lexInt p s)    }
-@name    { \p s -> TId     (loc p) (lexName s)     }
+@lname   { \p s -> TLid    (loc p) (lexName s)     }
+@uname   { \p s -> TUid    (loc p) (lexName s)     }
+.        { \p s -> lexErrorOn p s                   }
 
 {
 lexer :: ByteString.ByteString -> [Token Location]
 lexer = alexScanTokens
+
+lexErrorOn :: AlexPosn -> ByteString.ByteString -> a
+lexErrorOn p s = locatedError (loc p) $ "Unexpected character " ++ LC.unpack s
 
 -- | Produce a Located Token from a Token and Alex's position information
 loc :: AlexPosn -> Location

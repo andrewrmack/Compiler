@@ -26,6 +26,7 @@ interpret e = do
 
 simplify :: Expr Location -> Compiler (Expr Location)
 simplify e@(EEmpty _)   = return e
+simplify (ESig _ e _)   = simplify e
 simplify v@(EVar _ _)   = return v
 simplify n@(EInt _ _)   = return n
 simplify b@(EBool _ _)  = return b
@@ -60,6 +61,7 @@ substitute _ _ e@(EEmpty _)     = return e
 substitute _ _ e@(EInt _ _)     = return e
 substitute _ _ e@(EFloat _ _)   = return e
 substitute _ _ e@(EBool _ _)    = return e
+substitute n e (ESig _ e' _)    = substitute n e e'
 substitute n e (ETuple l es) = ETuple l <$> mapM (substitute n e) es
 substitute n e (EList  l es) = EList  l <$> mapM (substitute n e) es
 substitute n e (ELam l x e1)

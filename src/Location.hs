@@ -6,6 +6,7 @@ import Lang
 
 data Location = Location {-# UNPACK #-} !Int -- Row
                          {-# UNPACK #-} !Int -- Column
+              | NoLocation
 
 class Located a where
   locate :: a -> Location
@@ -15,3 +16,6 @@ instance Located (Token Location) where
 
 instance Located (Expr Location) where
   locate e = e^.etag
+
+instance Located Type where
+  locate _ = NoLocation

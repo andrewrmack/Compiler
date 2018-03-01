@@ -6,6 +6,7 @@ module Lang
   , Expr(..)
   , Op(..)
   , Value(..)
+  , Type(..)
   , Name
   , ttag
   , tbool
@@ -70,7 +71,8 @@ data Token a =
   | TTimes  { _ttag :: a }
   | TDivide { _ttag :: a }
   | TBool   { _ttag :: a, _tbool :: !Bool }
-  | TId     { _ttag :: a, _tid :: !Name }
+  | TLid    { _ttag :: a, _tid :: !Name }
+  | TUid    { _ttag :: a, _tid :: !Name }
   | TInt    { _ttag :: a, _tint ::{-# UNPACK #-} !Int }
   | TFloat  { _ttag :: a, _tfloat :: {-# UNPACK #-} !Double }
   deriving (Generic)
@@ -79,9 +81,20 @@ makeLenses ''Token
 
 instance (NFData a) => NFData (Token a)
 
+data Type =
+    TyLit Name
+  | TyVar Name
+  | TyTuple [Type]
+  | TyList Type
+  | TyArr Type Type
+  deriving (Generic)
+
+instance NFData Type
+
 -- n.b. No strictness in branches of EIf to save work.
 data Expr a =
     EEmpty  { _etag :: a }
+  | ESig    { _etag :: a, _eexp :: Expr a, _etype :: Type }
   | EInt    { _etag :: a, _eint :: {-# UNPACK #-} !Int }
   | EFloat  { _etag :: a, _efloat ::  {-# UNPACK #-} !Double }
   | EVar    { _etag :: a, _evar :: !Name }
@@ -109,6 +122,7 @@ ppOp Lte    = "<="
 
 ppExpr :: Expr a -> Text
 ppExpr (EEmpty _)          = ""
+ppExpr (ESig _ e _)        = ppExpr e
 ppExpr (EVar _ n)          = n
 ppExpr (EInt _ n)          = T.pack $ show n
 ppExpr (EFloat _ f)        = T.pack $ show f
@@ -147,7 +161,8 @@ ppToken (TTimes _)      = "*"
 ppToken (TDivide _)     = "/"
 ppToken (TBool _ True)  = "true"
 ppToken (TBool _ False) = "false"
-ppToken (TId _ t)       = t
+ppToken (TLid _ t)      = t
+ppToken (TUid _ t)      = t
 ppToken (TInt _ n)      = T.pack $ show n
 ppToken (TFloat _ f)    = T.pack $ show f
 
