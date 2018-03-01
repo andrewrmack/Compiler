@@ -6,7 +6,7 @@ module Error
   , showWarnings
   , runCompiler
   , Compiler()
-  )where
+  ) where
 
 import Control.Lens
 import Control.Monad.State

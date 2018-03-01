@@ -26,8 +26,13 @@ $namechar = [a-zA-Z0-9'_] @decimal  = $digit+
 tokens :-
 
 $white+  ;
+\,       { \p s -> TComma  (loc p)                 }
 \(       { \p s -> TLParen (loc p)                 }
 \)       { \p s -> TRParen (loc p)                 }
+\[       { \p s -> TLBrace (loc p)                 }
+\]       { \p s -> TRBrace (loc p)                 }
+\:\:     { \p s -> TDColon (loc p)                 }
+\:       { \p s -> TColon  (loc p)                 }
 \+       { \p s -> TPlus   (loc p)                 }
 \-       { \p s -> TMinus  (loc p)                 }
 \*       { \p s -> TTimes  (loc p)                 }

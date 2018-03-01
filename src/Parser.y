@@ -20,6 +20,9 @@ import Location
 %token
       '('     { TLParen _   }
       ')'     { TRParen _   }
+      '['     { TLBrace _   }
+      ']'     { TRBrace _   }
+      ','     { TComma  _   }
       '<='    { TLte    _   }
       '='     { TEqual  _   }
       '->'    { TRArrow _   }
@@ -42,12 +45,12 @@ import Location
 %%
 
 iexp :: { Expr Location }
-iexp : iexp '+'  iexp           { EOp (locate $2) Plus $1 $3                }
-     | iexp '-'  iexp           { EOp (locate $2) Minus $1 $3               }
-     | iexp '*'  iexp           { EOp (locate $2) Times $1 $3               }
-     | iexp '/'  iexp           { EOp (locate $2) Divide $1 $3              }
-     | iexp '<=' iexp           { EOp (locate $2) Lte $1 $3                 }
-     | lexp                     { $1 }
+iexp : iexp '+'  iexp     { EOp (locate $2) Plus $1 $3   }
+     | iexp '-'  iexp     { EOp (locate $2) Minus $1 $3  }
+     | iexp '*'  iexp     { EOp (locate $2) Times $1 $3  }
+     | iexp '/'  iexp     { EOp (locate $2) Divide $1 $3 }
+     | iexp '<=' iexp     { EOp (locate $2) Lte $1 $3    }
+     | lexp               { $1                           }
 
 lexp :: { Expr Location }
 lexp : if iexp then iexp else iexp { EIf (locate $1) $2 $4 $6                  }
@@ -57,15 +60,23 @@ lexp : if iexp then iexp else iexp { EIf (locate $1) $2 $4 $6                  }
      | fexp                        { $1                                        }
 
 fexp :: { Expr Location }
-fexp : fexp aexp                { EApp (locate $1) $1 $2                    }
-     | aexp                     { $1                                        }
+fexp : fexp aexp          { EApp (locate $1) $1 $2 }
+     | aexp               { $1                     }
 
 aexp :: { Expr Location }
-aexp : int                      { EInt (locate $1) ($1^?!tint)              }
-     | float                    { EFloat (locate $1) ($1^?!tfloat)          }
-     | bool                     { EBool (locate $1) ($1^?!tbool)            }
-     | id                       { EVar (locate $1) ($1^?!tid)               }
-     | '(' iexp ')'             { $2                                        }
+aexp : int                   { EInt (locate $1) ($1^?!tint)         }
+     | float                 { EFloat (locate $1) ($1^?!tfloat)     }
+     | bool                  { EBool (locate $1) ($1^?!tbool)       }
+     | id                    { EVar (locate $1) ($1^?!tid)          }
+     | '(' iexp ',' exps ')' { ETuple (locate $1) ($2 : reverse $4) }
+     | '[' exps ']'          { EList (locate $1) (reverse $2)       }
+     | '(' ')'               { ETuple (locate $1) []                }
+     | '(' iexp ')'          { $2                                   }
+
+exps :: { [Expr Location] }
+exps : {- empty -}          { []      }
+     | iexp                 { [$1]    }
+     | exps ',' iexp        { $3 : $1 }
 
 
 {

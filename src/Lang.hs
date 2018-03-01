@@ -49,6 +49,11 @@ data Token a =
     TLParen { _ttag :: a }
   | TRParen { _ttag :: a }
   | TLte    { _ttag :: a }
+  | TComma  { _ttag :: a }
+  | TDColon { _ttag :: a }
+  | TColon  { _ttag :: a }
+  | TLBrace { _ttag :: a }
+  | TRBrace { _ttag :: a }
   | TEqual  { _ttag :: a }
   | TFun    { _ttag :: a }
   | TFix    { _ttag :: a }
@@ -72,7 +77,6 @@ makeLenses ''Token
 
 instance (NFData a) => NFData (Token a)
 
-
 -- n.b. No strictness in branches of EIf to save work.
 data Expr a =
     EEmpty  { _etag :: a }
@@ -80,6 +84,8 @@ data Expr a =
   | EFloat  { _etag :: a, _efloat ::  {-# UNPACK #-} !Double }
   | EVar    { _etag :: a, _evar :: !Name }
   | EBool   { _etag :: a, _ebool :: !Bool }
+  | ETuple  { _etag :: a, _eelems :: ![Expr a] }
+  | EList   { _etag :: a, _eelems :: ![Expr a] }
   | EApp    { _etag :: a, _eapp1 :: !(Expr a), _eapp2 :: !(Expr a) }
   | EOp     { _etag :: a, _eop :: !Op, _eopp1 :: !(Expr a), _eopp2 :: !(Expr a) }
   | EIf     { _etag :: a, _eif :: !(Expr a), _ethen :: Expr a, _eelse :: Expr a }
@@ -106,6 +112,8 @@ ppExpr (EInt _ n)          = T.pack $ show n
 ppExpr (EFloat _ f)        = T.pack $ show f
 ppExpr (EBool _ True)      = "true"
 ppExpr (EBool _ False)     = "false"
+ppExpr (ETuple _ es)       = T.concat ["(", T.intercalate "," (map ppExpr es), ")"]
+ppExpr (EList  _ es)       = T.concat ["[", T.intercalate "," (map ppExpr es), "]"]
 ppExpr (EApp _ e1 e2)      = T.concat ["(", ppExpr e1, " ", ppExpr e2, ")"]
 ppExpr (EOp _ o e1 e2)     = T.concat ["(", ppOp o, " ",  ppExpr e1, " ", ppExpr e2, ")"]
 ppExpr (EIf _ e1 e2 e3)    = T.concat ["(if ", ppExpr e1, " ", ppExpr e2, " ", ppExpr e3, ")"]
@@ -117,6 +125,11 @@ ppToken :: Token a -> Text
 ppToken (TLParen _)     = "("
 ppToken (TRParen _)     = ")"
 ppToken (TLte _)        = "<="
+ppToken (TComma _)      = ","
+ppToken (TDColon _)     = "::"
+ppToken (TColon _)      = ":"
+ppToken (TLBrace _)     = "["
+ppToken (TRBrace _)     = "]"
 ppToken (TEqual _)      = "="
 ppToken (TRArrow _)     = "->"
 ppToken (TIf _)         = "if"
