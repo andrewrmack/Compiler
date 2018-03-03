@@ -43,6 +43,7 @@ exp := exp +  exp
      | exp *  exp
      | exp /  exp
      | exp <= exp
+     | exp :  exp
      | if exp then exp else exp
      | let x = exp in exp
      | fun x -> exp
@@ -51,6 +52,16 @@ exp := exp +  exp
 ```
 
 ## Changelog
+
+### [assignment-05] - 2018-03-02
+I'm using a token on this one
+#### Added
+- Types and type anotations
+- Mostly functional type inference
+#### Changed
+- Expressions must be well typed
+#### Known Bugs
+- The typechecker sometimes infers an overly general type
 
 ### [assignment-04] - 2018-02-21
 #### Added

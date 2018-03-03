@@ -27,27 +27,34 @@ interpret e = do
     EList  _ es -> VList  <$> mapM interpret es
     e'' -> locatedError (locate e'') "Expression could not be reduced to a value"
 
+-- Until I implement full pattern matching, these have to be
+-- special cases
 interpretBuiltinApp :: Name -> Expr Location -> Compiler (Expr Location)
 interpretBuiltinApp "fst" e = do
   e2 <- simplify e
   case e2 of
     (ETuple _ es) -> return $ head es
+    _ -> locatedError (locate e) "Cannot get first of non-tuple"
 interpretBuiltinApp "snd" e = do
   e2 <- simplify e
   case e2 of
     (ETuple _ es) -> return $ head (tail es)
+    _ -> locatedError (locate e) "Cannot get second of non-tuple"
 interpretBuiltinApp "empty" e = do
   e2 <- simplify e
   case e2 of
     (EList l es) -> return $ EBool l (null es)
+    _ -> locatedError (locate e) "Cannot check emptiness of non-list"
 interpretBuiltinApp "head" e = do
   e2 <- simplify e
   case e2 of
-    (ETuple _ es) -> return $ head es
+    (EList _ es) -> return $ head es
+    _ -> locatedError (locate e) "Cannot get head of non-list"
 interpretBuiltinApp "tail" e = do
   e2 <- simplify e
   case e2 of
-    (ETuple l es) -> return $ EList l (tail es)
+    (EList l es) -> return $ EList l (tail es)
+    _ -> locatedError (locate e) "Cannot get tail of non-list"
 interpretBuiltinApp s e = locatedError (locate e) $
   s <> " is not a builtin function"
 
