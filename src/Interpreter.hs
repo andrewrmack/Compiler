@@ -4,7 +4,6 @@ module Interpreter (evaluate, interpret) where
 import Data.ByteString.Lazy     (ByteString)
 import Data.Monoid              ((<>))
 import Data.Text                (Text)
-import Builtin
 import Error
 import Lexer
 import Parser
@@ -59,9 +58,10 @@ simplify v@(EVar _ _)   = return v
 simplify n@(EInt _ _)   = return n
 simplify b@(EBool _ _)  = return b
 simplify f@(EFloat _ _) = return f
-simplify (ECons l e es) =
-  case es of
-    (EList _ es') -> simplify (EList l (e:es'))
+simplify (ECons l e es) = do
+  es' <- simplify es
+  case es' of
+    (EList _ es'') -> simplify (EList l (e:es''))
     _ -> locatedError l "Can't cons onto non list"
 simplify (ETuple l es)  = ETuple l <$> mapM simplify es
 simplify (EList l es)   = EList  l <$> mapM simplify es

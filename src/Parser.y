@@ -16,6 +16,7 @@ import Location
 %nonassoc '<='
 %left '+' '-'
 %left '*' '/'
+%right ':'
 
 %token
       '('     { TLParen _   }
