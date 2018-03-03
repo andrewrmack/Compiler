@@ -11,10 +11,11 @@ import Error
 import Lang
 import Lexer
 import Parser
+import Typechecker
 import Interpreter
 import Paths_compiler      (version)
 
-data Mode = Default | LexDump | ParseDump
+data Mode = Default | LexDump | ParseDump | TypeDump
 data Args = Args
   { versionFlag :: Bool
   , input :: [FilePath]
@@ -29,16 +30,21 @@ parseVersionFlag = switch
 
 parseLexerFlag :: Parser Mode
 parseLexerFlag = flag' LexDump
-  ( long "lex"
+  ( long "ddump-lex"
  <> help "print the result of lexing to standard output" )
 
 parseParserFlag :: Parser Mode
-parseParserFlag = flag Default ParseDump
-  ( long "parse"
+parseParserFlag = flag' ParseDump
+  ( long "ddump-parse"
  <> help "print the result of parsing to standard output" )
 
+parseTypeFlag :: Parser Mode
+parseTypeFlag = flag Default TypeDump
+  ( long "ddump-typecheck"
+ <> help "print the result of typechecking to standard output" )
+
 parseMode :: Parser Mode
-parseMode = parseLexerFlag <|> parseParserFlag
+parseMode = parseLexerFlag <|> parseParserFlag <|> parseTypeFlag
 
 parseFileName :: Parser [String]
 parseFileName = many $ argument str (metavar "FILE")
@@ -55,6 +61,7 @@ main = do
          Default -> interpretFile (fromMaybe fileError (listToMaybe filepath))
          LexDump -> lexFile (fromMaybe fileError (listToMaybe filepath))
          ParseDump -> parseFile (fromMaybe fileError (listToMaybe filepath))
+         TypeDump -> typeFile (fromMaybe fileError (listToMaybe filepath))
   where
     fileError = errorWithoutStackTrace "No file given"
     opts = info (parseArgs <**> helper)
@@ -71,6 +78,11 @@ parseFile :: String -> IO ()
 parseFile file = do
   contents <- BL.readFile file
   TIO.putStrLn $ ppExpr (parse (lexer contents))
+
+typeFile :: String -> IO ()
+typeFile file = do
+  contents <- BL.readFile file
+  TIO.putStrLn $ ppType (getType (parse (lexer contents)))
 
 interpretFile :: String -> IO ()
 interpretFile file = do

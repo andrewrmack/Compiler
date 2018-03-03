@@ -1,4 +1,5 @@
 {
+{-# LANGUAGE OverloadedStrings #-}
 module Parser (parse) where
 
 import Control.Lens
@@ -22,7 +23,7 @@ import Location
       '['     { TLBrace _   }
       ']'     { TRBrace _   }
       '::'    { TDColon _   }
-      --':'     { TColon  _   }
+      ':'     { TColon  _   }
       ','     { TComma  _   }
       '<='    { TLte    _   }
       '='     { TEqual  _   }
@@ -56,6 +57,7 @@ iexp : iexp '+'  iexp     { EOp (locate $2) Plus $1 $3   }
      | iexp '*'  iexp     { EOp (locate $2) Times $1 $3  }
      | iexp '/'  iexp     { EOp (locate $2) Divide $1 $3 }
      | iexp '<=' iexp     { EOp (locate $2) Lte $1 $3    }
+     | iexp ':'  iexp     { ECons (locate $2) $1 $3      }
      | lexp               { $1                           }
 
 lexp :: { Expr Location }

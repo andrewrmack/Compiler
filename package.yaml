@@ -27,6 +27,7 @@ library:
     - lens
     - mtl
     - text
+    - unordered-containers
   ghc-options:
     - -O2
     - -Wall

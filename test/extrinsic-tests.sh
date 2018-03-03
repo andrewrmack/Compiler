@@ -14,7 +14,7 @@ do
 
   if [ -e $lexfile ]
   then
-      if ! diff <(stack exec compiler \-\- --lex $fn) $lexfile ; then
+      if ! diff <(stack exec compiler \-\- --ddump-lex $fn) $lexfile ; then
         >&2 echo "Failed lexing";
         exit 1;
       fi
@@ -25,7 +25,7 @@ do
 
   if [ -e $parsefile ]
   then
-      if ! diff <(stack exec compiler \-\- --parse $fn) $parsefile ; then
+      if ! diff <(stack exec compiler \-\- --ddump-parse $fn) $parsefile ; then
         >&2 echo "Failed parsing";
         exit 1;
       fi

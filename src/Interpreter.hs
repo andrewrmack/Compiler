@@ -1,15 +1,19 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Interpreter (evaluate, interpret) where
 
 import Data.ByteString.Lazy     (ByteString)
-import Data.Text                (Text, unpack)
+import Data.Monoid              ((<>))
+import Data.Text                (Text)
+import Builtin
 import Error
 import Lexer
 import Parser
 import Lang
 import Location
+import Typechecker
 
 evaluate :: ByteString -> Compiler Text
-evaluate = fmap ppValue . interpret . parse . lexer
+evaluate = fmap ppValue . interpret . typecheck . parse . lexer
 {-# INLINE evaluate #-}
 
 interpret :: Expr Location -> Compiler Value
@@ -24,6 +28,30 @@ interpret e = do
     EList  _ es -> VList  <$> mapM interpret es
     e'' -> locatedError (locate e'') "Expression could not be reduced to a value"
 
+interpretBuiltinApp :: Name -> Expr Location -> Compiler (Expr Location)
+interpretBuiltinApp "fst" e = do
+  e2 <- simplify e
+  case e2 of
+    (ETuple _ es) -> return $ head es
+interpretBuiltinApp "snd" e = do
+  e2 <- simplify e
+  case e2 of
+    (ETuple _ es) -> return $ head (tail es)
+interpretBuiltinApp "empty" e = do
+  e2 <- simplify e
+  case e2 of
+    (EList l es) -> return $ EBool l (null es)
+interpretBuiltinApp "head" e = do
+  e2 <- simplify e
+  case e2 of
+    (ETuple _ es) -> return $ head es
+interpretBuiltinApp "tail" e = do
+  e2 <- simplify e
+  case e2 of
+    (ETuple l es) -> return $ EList l (tail es)
+interpretBuiltinApp s e = locatedError (locate e) $
+  s <> " is not a builtin function"
+
 simplify :: Expr Location -> Compiler (Expr Location)
 simplify e@(EEmpty _)   = return e
 simplify (ESig _ e _)   = simplify e
@@ -31,6 +59,10 @@ simplify v@(EVar _ _)   = return v
 simplify n@(EInt _ _)   = return n
 simplify b@(EBool _ _)  = return b
 simplify f@(EFloat _ _) = return f
+simplify (ECons l e es) =
+  case es of
+    (EList _ es') -> simplify (EList l (e:es'))
+    _ -> locatedError l "Can't cons onto non list"
 simplify (ETuple l es)  = ETuple l <$> mapM simplify es
 simplify (EList l es)   = EList  l <$> mapM simplify es
 simplify (ELet _ n e1 e2) = substitute n e1 e2 >>= simplify
@@ -41,6 +73,7 @@ simplify (EApp l e1 e2) = do
   case e1' of
     ELam _ n e -> substitute n e2 e >>= simplify
     EFix l' f x e -> substitute x e2 e >>= substitute f (EFix l' f x e) >>= simplify
+    EVar _ v -> interpretBuiltinApp v e2 >>= simplify
     _ -> locatedError l "Cannot apply non-lambda to expression"
 simplify (EIf l e1 e2 e3) = do
   e1' <- simplify e1
@@ -51,17 +84,17 @@ simplify (EOp l op e1 e2) = do
   e2' <- simplify e2
   case (e1', e2') of
     (EFloat _ f1, EFloat _ f2) -> return $ floatOp l op f1 f2
-    (EFloat _ f1, EInt _ n2)   -> return $ floatOp l op f1 (fromIntegral n2)
-    (EInt _ n1, EFloat _ f2)   -> return $ floatOp l op (fromIntegral n1) f2
     (EInt _ n1, EInt _ n2)     -> return $ intOp l op n1 n2
-    _ -> locatedError l "Cannot perform arithmetic operation on non number"
+    _ -> locatedError l $
+      "Cannot perform arithmetic operation on " <> ppExpr e1' <> " and " <> ppExpr e2'
 
 substitute :: Name -> Expr Location -> Expr Location -> Compiler (Expr Location)
-substitute _ _ e@(EEmpty _)     = return e
-substitute _ _ e@(EInt _ _)     = return e
-substitute _ _ e@(EFloat _ _)   = return e
-substitute _ _ e@(EBool _ _)    = return e
-substitute n e (ESig _ e' _)    = substitute n e e'
+substitute _ _ e@(EEmpty _)    = return e
+substitute _ _ e@(EInt _ _)    = return e
+substitute _ _ e@(EFloat _ _)  = return e
+substitute _ _ e@(EBool _ _)   = return e
+substitute n e (ESig _ e' _)   = substitute n e e'
+substitute n e (ECons l e' es) = ECons l <$> substitute n e e' <*> substitute n e es
 substitute n e (ETuple l es) = ETuple l <$> mapM (substitute n e) es
 substitute n e (EList  l es) = EList  l <$> mapM (substitute n e) es
 substitute n e (ELam l x e1)
@@ -96,7 +129,7 @@ substitute n e e'@(EVar _ x)
   | otherwise = return e'
 
 warnNameShadow :: Location -> Name -> Compiler ()
-warnNameShadow l n = logWarning l $ "Binding of " ++ unpack n ++ " shadows existing binding"
+warnNameShadow l n = logWarning l $ "Binding of " <> n <> " shadows existing binding"
 
 floatOp :: Location -> Op -> Double -> Double -> Expr Location
 floatOp l Plus   f1 f2 = EFloat l $ f1 +  f2

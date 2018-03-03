@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 955e36d7661c8acc3e4af3c469281d275f64b679bee87389d257fb5ff692cfc6
+-- hash: 65fa8cd063feb86b80aeb90d4f4b960f700a63ce512cdc4f821ec86bc6e15bfd
 
 name:           compiler
 version:        0.4.0
@@ -37,16 +37,19 @@ library
     , lens
     , mtl
     , text
+    , unordered-containers
   build-tools:
       alex
     , happy
   exposed-modules:
+      Builtin
       Error
       Interpreter
       Lang
       Lexer
       Location
       Parser
+      Typechecker
   other-modules:
       Paths_compiler
   default-language: Haskell2010

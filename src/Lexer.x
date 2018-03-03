@@ -3,10 +3,13 @@
 {-# OPTIONS_GHC -fno-warn-unused-matches #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
+{-# LANGUAGE OverloadedStrings #-}
+
 module Lexer (lexer) where
 
 import qualified Data.ByteString.Lazy.Char8 as LC
 import Data.ByteString.Lex.Fractional
+import Data.Monoid ((<>))
 import Data.Text (Text)
 import Data.Text.Encoding as TE
 import Error
@@ -54,16 +57,16 @@ false    { \p s -> TBool   (loc p) False           }
 NaN      { \p s -> TFloat  (loc p) (0.0 / 0.0)     }
 @float   { \p s -> TFloat  (loc p) (lexFloat p s)  }
 @decimal { \p s -> TInt    (loc p) (lexInt p s)    }
-@lname   { \p s -> TLid    (loc p) (lexName s)     }
-@uname   { \p s -> TUid    (loc p) (lexName s)     }
-.        { \p s -> lexErrorOn p s                   }
+@lname   { \p s -> TLid    (loc p) (fromBS s)      }
+@uname   { \p s -> TUid    (loc p) (fromBS s)      }
+.        { \p s -> lexErrorOn p s                  }
 
 {
 lexer :: ByteString.ByteString -> [Token Location]
 lexer = alexScanTokens
 
 lexErrorOn :: AlexPosn -> ByteString.ByteString -> a
-lexErrorOn p s = locatedError (loc p) $ "Unexpected character " ++ LC.unpack s
+lexErrorOn p s = locatedError (loc p) $ "Unexpected character " <> fromBS s
 
 -- | Produce a Located Token from a Token and Alex's position information
 loc :: AlexPosn -> Location
@@ -73,14 +76,14 @@ loc (AlexPn _ r c) = Location r c
 lexFloat :: AlexPosn -> ByteString.ByteString -> Double
 lexFloat p s = case readDecimal (ByteString.toStrict s) of
                  Just (f,_) -> f
-                 _ -> locatedError (loc p) $ "Can't lex float " ++ LC.unpack s
+                 _ -> locatedError (loc p) $ "Can't lex float " <> fromBS s
 
 -- | Read an Int from a ByteString
 lexInt :: AlexPosn -> ByteString.ByteString -> Int
 lexInt p s = case LC.readInt s of
                Just (n,_) -> n
-               _ -> locatedError (loc p) $ "Unable to lex integer " ++ LC.unpack s
+               _ -> locatedError (loc p) $ "Unable to lex integer " <> fromBS s
 
-lexName :: ByteString.ByteString -> Text
-lexName = TE.decodeUtf8 . ByteString.toStrict
+fromBS :: ByteString.ByteString -> Text
+fromBS = TE.decodeUtf8 . ByteString.toStrict
 }

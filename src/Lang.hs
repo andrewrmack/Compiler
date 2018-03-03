@@ -1,26 +1,10 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Lang
-  ( Token(..)
-  , Expr(..)
-  , Op(..)
-  , Value(..)
-  , Type(..)
-  , Name
-  , ttag
-  , tbool
-  , tint
-  , tfloat
-  , tid
-  , etag
-  , ppTokenList
-  , ppExpr
-  , ppValue
-  ) where
+module Lang where
 
 import Control.DeepSeq          (NFData)
-import Control.Lens             (makeLenses, makeLensesFor)
+import Control.Lens             (makeLenses, makePrisms)
 import Data.Text                (Text)
 import qualified Data.Text as T
 import GHC.Generics             (Generic)
@@ -70,6 +54,11 @@ data Token a =
   | TMinus  { _ttag :: a }
   | TTimes  { _ttag :: a }
   | TDivide { _ttag :: a }
+--  | THead   { _ttag :: a }
+--  | TTail   { _ttag :: a }
+--  | TEmpty  { _ttag :: a }
+--  | TFirst  { _ttag :: a }
+--  | TSecond { _ttag :: a }
   | TBool   { _ttag :: a, _tbool :: !Bool }
   | TLid    { _ttag :: a, _tid :: !Name }
   | TUid    { _ttag :: a, _tid :: !Name }
@@ -84,16 +73,25 @@ instance (NFData a) => NFData (Token a)
 data Type =
     TyLit Name
   | TyVar Name
+  | TyGenSym {-# UNPACK #-} !Int
   | TyTuple [Type]
   | TyList Type
   | TyArr Type Type
-  deriving (Generic)
+  deriving (Generic,Eq)
+
+makePrisms ''Type
 
 instance NFData Type
 
 -- n.b. No strictness in branches of EIf to save work.
 data Expr a =
     EEmpty  { _etag :: a }
+--  | EHead   { _etag :: a, _eexp :: Expr a }
+--  | ETail   { _etag :: a, _eexp :: Expr a }
+--  | EFirst  { _etag :: a, _eexp :: Expr a }
+--  | ESecond { _etag :: a, _eexp :: Expr a }
+--  | ELEmpty { _etag :: a, _eexp :: Expr a }
+  | ECons   { _etag :: a, _eelem :: Expr a, _elist :: Expr a }
   | ESig    { _etag :: a, _eexp :: Expr a, _etype :: Type }
   | EInt    { _etag :: a, _eint :: {-# UNPACK #-} !Int }
   | EFloat  { _etag :: a, _efloat ::  {-# UNPACK #-} !Double }
@@ -109,9 +107,13 @@ data Expr a =
   | ELam    { _etag :: a, _evar :: !Name, _ebody :: Expr a }
   deriving (Generic)
 
-makeLensesFor [("_etag", "etag")] ''Expr
+makeLenses ''Expr
 
 instance (NFData a) => NFData (Expr a)
+
+opType :: Type -> Op -> Type
+opType _ Lte = TyLit "Bool"
+opType t _   = t
 
 ppOp :: Op -> Text
 ppOp Plus   = "+"
@@ -122,6 +124,7 @@ ppOp Lte    = "<="
 
 ppExpr :: Expr a -> Text
 ppExpr (EEmpty _)          = ""
+ppExpr (ECons _ e1 e2)     = T.concat [ppExpr e1, ":", ppExpr e2]
 ppExpr (ESig _ e _)        = ppExpr e
 ppExpr (EVar _ n)          = n
 ppExpr (EInt _ n)          = T.pack $ show n
@@ -168,6 +171,15 @@ ppToken (TFloat _ f)    = T.pack $ show f
 
 ppTokenList :: [Token a] -> Text
 ppTokenList ts = T.concat ["[", T.intercalate ", " (map ppToken ts), "]"]
+
+ppType :: Type -> Text
+ppType (TyLit t) = t
+ppType (TyVar t) = t
+ppType (TyGenSym i) = T.concat ["t", T.pack (show i)]
+ppType (TyTuple ts) = T.concat ["(", T.intercalate "," (map ppType ts), ")"]
+ppType (TyList t) = T.concat ["[", ppType t, "]"]
+ppType (TyArr t1@TyArr{} t2) = T.concat ["(", ppType t1, ") -> ", ppType t2]
+ppType (TyArr t1 t2) = T.concat [ppType t1, " -> ", ppType t2]
 
 -- n.b. VBools are handled differently because the object language uses
 -- lowercase for booleans, whereas Haskell uses uppercase identifiers.
