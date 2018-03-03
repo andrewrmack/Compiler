@@ -62,7 +62,7 @@ NaN      { \p s -> TFloat  (loc p) (0.0 / 0.0)     }
 .        { \p s -> lexErrorOn p s                  }
 
 {
-lexer :: ByteString.ByteString -> [Token Location]
+lexer :: ByteString.ByteString -> [Token]
 lexer = alexScanTokens
 
 lexErrorOn :: AlexPosn -> ByteString.ByteString -> a

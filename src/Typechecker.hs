@@ -13,14 +13,14 @@ import Error
 import Lang
 import Location
 
-getType :: Expr Location -> Type
+getType :: Expr -> Type
 getType = fst . runTypecheck
 
-typecheck :: Expr Location -> Expr Location
+typecheck :: Expr -> Expr
 typecheck = snd . runTypecheck
 {-# INLINE typecheck #-}
 
-runTypecheck :: Expr Location -> (Type, Expr Location)
+runTypecheck :: Expr-> (Type, Expr)
 runTypecheck e = case evalState (typecheck' H.empty e) 0 of
                      (!t, !e') -> (t, e') -- Force t and e to WHNF
 
@@ -32,7 +32,7 @@ freshGenSym = do
   modify (+1)
   return $ TyGenSym i
 
-typecheck' :: Gamma -> Expr Location -> State Int (Type, Expr Location)
+typecheck' :: Gamma -> Expr -> State Int (Type, Expr)
 typecheck' _ e@EEmpty{} = (,e) <$> freshGenSym
 typecheck' _ e@EInt{} = return (TyLit "Int", e)
 typecheck' _ e@EFloat{} = return (TyLit "Float", e)
@@ -72,7 +72,7 @@ typecheck' g e@EApp{} = do
   tmp2 <- freshGenSym
   case unify t1 (TyArr tmp1 tmp2) of
     Just (TyArr t3 t4) -> case unify t2 t3 of
-                            Just _ -> return (t4, EApp (_etag e) e1 e2)
+                            Just _ -> return (t4, EApp (_eloc e) e1 e2)
                             _ -> locatedError (locate e) $
                               "Failed to unify input " <> ppType t2 <> " with expected " <> ppType t3
     _ -> locatedError (locate e) $

@@ -10,7 +10,7 @@ import Location
 }
 
 %name parseRaw
-%tokentype { Token Location }
+%tokentype { Token }
 %error { parseError }
 
 %nonassoc '<='
@@ -48,11 +48,11 @@ import Location
 
 %%
 
-exp  :: { Expr Location }
+exp  :: { Expr }
 exp  : iexp '::' type     { ESig (locate $1) $1 $3       }
      | iexp               { $1                           }
 
-iexp :: { Expr Location }
+iexp :: { Expr }
 iexp : iexp '+'  iexp     { EOp (locate $2) Plus $1 $3   }
      | iexp '-'  iexp     { EOp (locate $2) Minus $1 $3  }
      | iexp '*'  iexp     { EOp (locate $2) Times $1 $3  }
@@ -61,18 +61,18 @@ iexp : iexp '+'  iexp     { EOp (locate $2) Plus $1 $3   }
      | iexp ':'  iexp     { ECons (locate $2) $1 $3      }
      | lexp               { $1                           }
 
-lexp :: { Expr Location }
+lexp :: { Expr }
 lexp : if exp then exp else exp    { EIf (locate $1) $2 $4 $6                  }
      | let lid '=' exp in exp      { ELet (locate $1) ($2^?!tid) $4 $6         }
      | fun lid '->' exp            { ELam (locate $1) ($2^?!tid) $4            }
      | fix lid lid '->' exp        { EFix (locate $1) ($2^?!tid) ($3^?!tid) $5 }
      | fexp                        { $1                                        }
 
-fexp :: { Expr Location }
+fexp :: { Expr }
 fexp : fexp aexp          { EApp (locate $1) $1 $2 }
      | aexp               { $1                     }
 
-aexp :: { Expr Location }
+aexp :: { Expr }
 aexp : int                   { EInt (locate $1) ($1^?!tint)         }
      | float                 { EFloat (locate $1) ($1^?!tfloat)     }
      | bool                  { EBool (locate $1) ($1^?!tbool)       }
@@ -82,7 +82,7 @@ aexp : int                   { EInt (locate $1) ($1^?!tint)         }
      | '(' ')'               { ETuple (locate $1) []                }
      | '(' exp ')'           { $2                                   }
 
-exps :: { [Expr Location] }
+exps :: { [Expr] }
 exps : {- empty -}          { []      }
      | exp                  { [$1]    }
      | exps ',' exp         { $3 : $1 }
@@ -101,11 +101,11 @@ atype : uid { TyLit ($1^?!tid) }
       | '[' type ']' { TyList $2 }
 
 {
-parse :: [Token Location] -> Expr Location
+parse :: [Token] -> Expr
 parse [] = EEmpty (Location 0 0)
 parse ts = parseRaw ts
 
-parseError :: [Token Location] -> a
+parseError :: [Token] -> a
 parseError []     = errorWithoutStackTrace "Parse error at unknown location"
 parseError (t:ts) = locatedError (locate t) "Parse error"
 }

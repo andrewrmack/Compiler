@@ -15,7 +15,7 @@ evaluate :: ByteString -> Compiler Text
 evaluate = fmap ppValue . interpret . typecheck . parse . lexer
 {-# INLINE evaluate #-}
 
-interpret :: Expr Location -> Compiler Value
+interpret :: Expr -> Compiler Value
 interpret e = do
   e' <- simplify e
   case e' of
@@ -29,7 +29,7 @@ interpret e = do
 
 -- Until I implement full pattern matching, these have to be
 -- special cases
-interpretBuiltinApp :: Name -> Expr Location -> Compiler (Expr Location)
+interpretBuiltinApp :: Name -> Expr -> Compiler Expr
 interpretBuiltinApp "fst" e = do
   e2 <- simplify e
   case e2 of
@@ -58,7 +58,7 @@ interpretBuiltinApp "tail" e = do
 interpretBuiltinApp s e = locatedError (locate e) $
   s <> " is not a builtin function"
 
-simplify :: Expr Location -> Compiler (Expr Location)
+simplify :: Expr -> Compiler Expr
 simplify e@(EEmpty _)   = return e
 simplify (ESig _ e _)   = simplify e
 simplify v@(EVar _ _)   = return v
@@ -95,7 +95,7 @@ simplify (EOp l op e1 e2) = do
     _ -> locatedError l $
       "Cannot perform arithmetic operation on " <> ppExpr e1' <> " and " <> ppExpr e2'
 
-substitute :: Name -> Expr Location -> Expr Location -> Compiler (Expr Location)
+substitute :: Name -> Expr -> Expr -> Compiler Expr
 substitute _ _ e@(EEmpty _)    = return e
 substitute _ _ e@(EInt _ _)    = return e
 substitute _ _ e@(EFloat _ _)  = return e
@@ -138,7 +138,7 @@ substitute n e e'@(EVar _ x)
 warnNameShadow :: Location -> Name -> Compiler ()
 warnNameShadow l n = logWarning l $ "Binding of " <> n <> " shadows existing binding"
 
-floatOp :: Location -> Op -> Double -> Double -> Expr Location
+floatOp :: Location -> Op -> Double -> Double -> Expr
 floatOp l Plus   f1 f2 = EFloat l $ f1 +  f2
 floatOp l Minus  f1 f2 = EFloat l $ f1 -  f2
 floatOp l Times  f1 f2 = EFloat l $ f1 *  f2
@@ -146,7 +146,7 @@ floatOp l Divide f1 f2 = EFloat l $ f1 /  f2
 floatOp l Lte    f1 f2 = EBool  l $ f1 <= f2
 {-# INLINE floatOp #-}
 
-intOp :: Location -> Op -> Int -> Int -> Expr Location
+intOp :: Location -> Op -> Int -> Int -> Expr
 intOp l Plus  n1 n2  = EInt  l $ n1 +  n2
 intOp l Minus n1 n2  = EInt  l $ n1 -  n2
 intOp l Times n1 n2  = EInt  l $ n1 *  n2

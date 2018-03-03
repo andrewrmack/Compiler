@@ -4,10 +4,12 @@
 module Lang where
 
 import Control.DeepSeq          (NFData)
-import Control.Lens             (makeLenses, makePrisms)
+import Control.Lens
 import Data.Text                (Text)
 import qualified Data.Text as T
 import GHC.Generics             (Generic)
+
+import Location
 
 data Value =
     VEmpty
@@ -32,43 +34,41 @@ instance NFData Op
 
 type Name = Text
 
-data Token a =
-    TLParen { _ttag :: a }
-  | TRParen { _ttag :: a }
-  | TLte    { _ttag :: a }
-  | TComma  { _ttag :: a }
-  | TDColon { _ttag :: a }
-  | TColon  { _ttag :: a }
-  | TLBrace { _ttag :: a }
-  | TRBrace { _ttag :: a }
-  | TEqual  { _ttag :: a }
-  | TFun    { _ttag :: a }
-  | TFix    { _ttag :: a }
-  | TRArrow { _ttag :: a }
-  | TIf     { _ttag :: a }
-  | TThen   { _ttag :: a }
-  | TElse   { _ttag :: a }
-  | TLet    { _ttag :: a }
-  | TIn     { _ttag :: a }
-  | TPlus   { _ttag :: a }
-  | TMinus  { _ttag :: a }
-  | TTimes  { _ttag :: a }
-  | TDivide { _ttag :: a }
---  | THead   { _ttag :: a }
---  | TTail   { _ttag :: a }
---  | TEmpty  { _ttag :: a }
---  | TFirst  { _ttag :: a }
---  | TSecond { _ttag :: a }
-  | TBool   { _ttag :: a, _tbool :: !Bool }
-  | TLid    { _ttag :: a, _tid :: !Name }
-  | TUid    { _ttag :: a, _tid :: !Name }
-  | TInt    { _ttag :: a, _tint ::{-# UNPACK #-} !Int }
-  | TFloat  { _ttag :: a, _tfloat :: {-# UNPACK #-} !Double }
+data Token =
+    TLParen { _tloc :: Location }
+  | TRParen { _tloc :: Location }
+  | TLte    { _tloc :: Location }
+  | TComma  { _tloc :: Location }
+  | TDColon { _tloc :: Location }
+  | TColon  { _tloc :: Location }
+  | TLBrace { _tloc :: Location }
+  | TRBrace { _tloc :: Location }
+  | TEqual  { _tloc :: Location }
+  | TFun    { _tloc :: Location }
+  | TFix    { _tloc :: Location }
+  | TRArrow { _tloc :: Location }
+  | TIf     { _tloc :: Location }
+  | TThen   { _tloc :: Location }
+  | TElse   { _tloc :: Location }
+  | TLet    { _tloc :: Location }
+  | TIn     { _tloc :: Location }
+  | TPlus   { _tloc :: Location }
+  | TMinus  { _tloc :: Location }
+  | TTimes  { _tloc :: Location }
+  | TDivide { _tloc :: Location }
+  | TBool   { _tloc :: Location, _tbool :: !Bool }
+  | TLid    { _tloc :: Location, _tid :: !Name }
+  | TUid    { _tloc :: Location, _tid :: !Name }
+  | TInt    { _tloc :: Location, _tint ::{-# UNPACK #-} !Int }
+  | TFloat  { _tloc :: Location, _tfloat :: {-# UNPACK #-} !Double }
   deriving (Generic)
 
 makeLenses ''Token
 
-instance (NFData a) => NFData (Token a)
+instance NFData Token
+
+instance Located Token where
+  locate t = t^.tloc
 
 data Type =
     TyLit Name
@@ -83,33 +83,33 @@ makePrisms ''Type
 
 instance NFData Type
 
--- n.b. No strictness in branches of EIf to save work.
-data Expr a =
-    EEmpty  { _etag :: a }
---  | EHead   { _etag :: a, _eexp :: Expr a }
---  | ETail   { _etag :: a, _eexp :: Expr a }
---  | EFirst  { _etag :: a, _eexp :: Expr a }
---  | ESecond { _etag :: a, _eexp :: Expr a }
---  | ELEmpty { _etag :: a, _eexp :: Expr a }
-  | ECons   { _etag :: a, _eelem :: Expr a, _elist :: Expr a }
-  | ESig    { _etag :: a, _eexp :: Expr a, _etype :: Type }
-  | EInt    { _etag :: a, _eint :: {-# UNPACK #-} !Int }
-  | EFloat  { _etag :: a, _efloat ::  {-# UNPACK #-} !Double }
-  | EVar    { _etag :: a, _evar :: !Name }
-  | EBool   { _etag :: a, _ebool :: !Bool }
-  | ETuple  { _etag :: a, _eelems :: ![Expr a] }
-  | EList   { _etag :: a, _eelems :: ![Expr a] }
-  | EApp    { _etag :: a, _eapp1 :: !(Expr a), _eapp2 :: !(Expr a) }
-  | EOp     { _etag :: a, _eop :: !Op, _eopp1 :: !(Expr a), _eopp2 :: !(Expr a) }
-  | EIf     { _etag :: a, _eif :: !(Expr a), _ethen :: Expr a, _eelse :: Expr a }
-  | ELet    { _etag :: a, _ename :: !Name, _ebind :: Expr a, _ein :: Expr a }
-  | EFix    { _etag :: a, _efun :: !Name, _evar :: !Name, _ebody :: Expr a }
-  | ELam    { _etag :: a, _evar :: !Name, _ebody :: Expr a }
+instance Located Type where
+  locate _ = NoLocation
+
+data Expr =
+    EEmpty  { _eloc :: Location }
+  | ECons   { _eloc :: Location, _eelem :: Expr, _elist :: Expr }
+  | ESig    { _eloc :: Location, _eexp :: Expr, _etype :: Type }
+  | EInt    { _eloc :: Location, _eint :: {-# UNPACK #-} !Int }
+  | EFloat  { _eloc :: Location, _efloat ::  {-# UNPACK #-} !Double }
+  | EVar    { _eloc :: Location, _evar :: !Name }
+  | EBool   { _eloc :: Location, _ebool :: !Bool }
+  | ETuple  { _eloc :: Location, _eelems :: ![Expr] }
+  | EList   { _eloc :: Location, _eelems :: ![Expr] }
+  | EApp    { _eloc :: Location, _eapp1 :: !Expr, _eapp2 :: !Expr }
+  | EOp     { _eloc :: Location, _eop :: !Op, _eopp1 :: !Expr, _eopp2 :: !Expr }
+  | EIf     { _eloc :: Location, _eif :: !Expr, _ethen :: Expr, _eelse :: Expr }
+  | ELet    { _eloc :: Location, _ename :: !Name, _ebind :: Expr, _ein :: Expr }
+  | EFix    { _eloc :: Location, _efun :: !Name, _evar :: !Name, _ebody :: Expr }
+  | ELam    { _eloc :: Location, _evar :: !Name, _ebody :: Expr }
   deriving (Generic)
 
 makeLenses ''Expr
 
-instance (NFData a) => NFData (Expr a)
+instance NFData Expr
+
+instance Located Expr where
+  locate e = e^.eloc
 
 opType :: Type -> Op -> Type
 opType _ Lte = TyLit "Bool"
@@ -122,7 +122,7 @@ ppOp Times  = "*"
 ppOp Divide = "/"
 ppOp Lte    = "<="
 
-ppExpr :: Expr a -> Text
+ppExpr :: Expr -> Text
 ppExpr (EEmpty _)          = ""
 ppExpr (ECons _ e1 e2)     = T.concat [ppExpr e1, ":", ppExpr e2]
 ppExpr (ESig _ e _)        = ppExpr e
@@ -140,7 +140,7 @@ ppExpr (ELet _ n e1 e2)    = T.concat ["(let (", n, " = ", ppExpr e1, ") ", ppEx
 ppExpr (EFix _ f n e)      = T.concat ["(fix ", f, " ", n, " -> ", ppExpr e, ")"]
 ppExpr (ELam _ n e)        = T.concat ["(fun ", n, " -> ", ppExpr e, ")"]
 
-ppToken :: Token a -> Text
+ppToken :: Token -> Text
 ppToken (TLParen _)     = "("
 ppToken (TRParen _)     = ")"
 ppToken (TLte _)        = "<="
@@ -169,7 +169,7 @@ ppToken (TUid _ t)      = t
 ppToken (TInt _ n)      = T.pack $ show n
 ppToken (TFloat _ f)    = T.pack $ show f
 
-ppTokenList :: [Token a] -> Text
+ppTokenList :: [Token] -> Text
 ppTokenList ts = T.concat ["[", T.intercalate ", " (map ppToken ts), "]"]
 
 ppType :: Type -> Text

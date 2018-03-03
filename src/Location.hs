@@ -1,21 +1,15 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Location where
 
-import Control.Lens
-import Lang
+import Control.DeepSeq (NFData)
+import GHC.Generics    (Generic)
 
 data Location = Location {-# UNPACK #-} !Int -- Row
                          {-# UNPACK #-} !Int -- Column
               | NoLocation
+              deriving Generic
+
+instance NFData Location
 
 class Located a where
   locate :: a -> Location
-
-instance Located (Token Location) where
-  locate t = t^.ttag
-
-instance Located (Expr Location) where
-  locate e = e^.etag
-
-instance Located Type where
-  locate _ = NoLocation
