@@ -57,6 +57,7 @@ data Token =
   | TWhile  { _tloc :: Location }
   | TDo     { _tloc :: Location }
   | TEnd    { _tloc :: Location }
+  | TNew    { _tloc :: Location }
   | TArray  { _tloc :: Location }
   | TIf     { _tloc :: Location }
   | TThen   { _tloc :: Location }
@@ -85,6 +86,8 @@ data Type =
     TyLit Name
   | TyVar Name
   | TyGenSym {-# UNPACK #-} !Int
+  | TyRef Type
+  | TyArray Type
   | TyTuple [Type]
   | TyList Type
   | TyArr Type Type
@@ -99,6 +102,13 @@ instance Located Type where
 
 data Expr =
     EEmpty  { _eloc :: Location }
+  | ESeq    { _eloc :: Location, _efst :: Expr, _esnd :: Expr }
+  | ERef    { _eloc :: Location, _eexpr :: Expr }
+  | EDeref  { _eloc :: Location, _eexpr :: Expr }
+  | EAssign { _eloc :: Location, _edst :: Expr, _eexpr :: Expr }
+  | EWhile  { _eloc :: Location, _eguard :: Expr, _ebody :: Expr }
+  | ENewArr { _eloc :: Location, _etype :: Type, _esize :: Int }
+  | EArrAcc { _eloc :: Location, _earr :: Expr, _eind :: Expr }
   | ECons   { _eloc :: Location, _eelem :: Expr, _elist :: Expr }
   | ESig    { _eloc :: Location, _eexp :: Expr, _etype :: Type }
   | EInt    { _eloc :: Location, _eint :: {-# UNPACK #-} !Int }
@@ -139,25 +149,37 @@ ppOp Divide = "/"
 ppOp Lte    = "<="
 
 ppExpr :: Expr -> Text
-ppExpr (EEmpty _)       = ""
-ppExpr (ECons _ e1 e2)  = ppExpr e1 <> ":" <> ppExpr e2
-ppExpr (ESig _ e _)     = ppExpr e
-ppExpr (EVar _ n)       = n
-ppExpr (EInt _ n)       = T.pack $ show n
-ppExpr (EFloat _ f)     = T.pack $ show f
-ppExpr (EBool _ True)   = "true"
-ppExpr (EBool _ False)  = "false"
-ppExpr (ETuple _ es)    = "(" <> T.intercalate "," (map ppExpr es) <> ")"
-ppExpr (EList  _ es)    = "[" <> T.intercalate "," (map ppExpr es) <> "]"
-ppExpr (EApp _ e1 e2)   = "(" <> ppExpr e1 <+> ppExpr e2 <> ")"
-ppExpr (EOp _ o e1 e2)  = "(" <> ppOp o <+> ppExpr e1 <+> ppExpr e2 <> ")"
-ppExpr (EIf _ e1 e2 e3) = "(if " <> ppExpr e1 <+> ppExpr e2 <+> ppExpr e3 <> ")"
-ppExpr (ELet _ n e1 e2) = "(let (" <> n <> " = " <> ppExpr e1 <> ") " <> ppExpr e2 <> ")"
-ppExpr (EFix _ f n e)   = "(fix " <> f <+> n <+> "->" <+> ppExpr e <> ")"
-ppExpr (ELam _ n e)     = "(fun " <> n <+> "->" <+> ppExpr e <> ")"
+ppExpr (EEmpty _)        = ""
+ppExpr (ESeq _ e1 e2)    = ppExpr e1 <> ";" <+> ppExpr e2
+ppExpr (ERef _ e)        = "ref (" <> ppExpr e <> ")"
+ppExpr (EDeref _ e)      = "!(" <> ppExpr e <> ")"
+ppExpr (EAssign _ e1 e2) = ppExpr e1 <+> ":=" <+> ppExpr e2
+ppExpr (EWhile _ e1 e2)  = "(while (" <> ppExpr e1 <> ") (" <> ppExpr e2 <> "))"
+ppExpr (ENewArr _ t n)   = "new" <+> ppType t <> "[" <> T.pack (show n) <> "]"
+ppExpr (EArrAcc _ e1 e2) = ppExpr e1 <> "[" <> ppExpr e2 <> "]"
+ppExpr (ECons _ e1 e2)   = ppExpr e1 <> ":" <> ppExpr e2
+ppExpr (ESig _ e _)      = ppExpr e
+ppExpr (EVar _ n)        = n
+ppExpr (EInt _ n)        = T.pack $ show n
+ppExpr (EFloat _ f)      = T.pack $ show f
+ppExpr (EBool _ True)    = "true"
+ppExpr (EBool _ False)   = "false"
+ppExpr (ETuple _ es)     = "(" <> T.intercalate "," (map ppExpr es) <> ")"
+ppExpr (EList  _ es)     = "[" <> T.intercalate "," (map ppExpr es) <> "]"
+ppExpr (EApp _ e1 e2)    = "(" <> ppExpr e1 <+> ppExpr e2 <> ")"
+ppExpr (EOp _ o e1 e2)   = "(" <> ppOp o <+> ppExpr e1 <+> ppExpr e2 <> ")"
+ppExpr (EIf _ e1 e2 e3)  = "(if " <> ppExpr e1 <+> ppExpr e2 <+> ppExpr e3 <> ")"
+ppExpr (ELet _ n e1 e2)  = "(let (" <> n <> " = " <> ppExpr e1 <> ") " <> ppExpr e2 <> ")"
+ppExpr (EFix _ f n e)    = "(fix " <> f <+> n <+> "->" <+> ppExpr e <> ")"
+ppExpr (ELam _ n e)      = "(fun " <> n <+> "->" <+> ppExpr e <> ")"
 
 ppToken :: Token -> Text
 ppToken (TLParen _)     = "("
+ppToken (TWhile _)      = "while"
+ppToken (TDo _)         = "do"
+ppToken (TEnd _)        = "end"
+ppToken (TNew _)        = "new"
+ppToken (TArray _)      = "Array"
 ppToken (TRParen _)     = ")"
 ppToken (TLAngle _)     = "<"
 ppToken (TRAngle _)     = ">"
@@ -196,6 +218,8 @@ ppTokenList ts = "[" <> T.intercalate ", " (map ppToken ts) <> "]"
 
 ppType :: Type -> Text
 ppType (TyLit t) = t
+ppType (TyRef t) = "<" <> ppType t <> ">"
+ppType (TyArray t) = "Array" <+> ppType t
 ppType (TyVar t) = t
 ppType (TyGenSym i) = "t" <> T.pack (show i)
 ppType (TyTuple ts) = T.concat ["(", T.intercalate "," (map ppType ts), ")"]

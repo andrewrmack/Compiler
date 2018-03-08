@@ -54,6 +54,7 @@ if       { \p s -> TIf     (loc p)                 }
 then     { \p s -> TThen   (loc p)                 }
 else     { \p s -> TElse   (loc p)                 }
 let      { \p s -> TLet    (loc p)                 }
+new      { \p s -> TNew    (loc p)                 }
 in       { \p s -> TIn     (loc p)                 }
 do       { \p s -> TDo     (loc p)                 }
 while    { \p s -> TWhile  (loc p)                 }
