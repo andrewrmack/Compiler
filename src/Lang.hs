@@ -3,6 +3,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Lang where
 
+import Data.Monoid
 import Control.DeepSeq          (NFData)
 import Control.Lens
 import Data.Text                (Text)
@@ -40,13 +41,23 @@ data Token =
   | TLte    { _tloc :: Location }
   | TComma  { _tloc :: Location }
   | TDColon { _tloc :: Location }
+  | TCEq    { _tloc :: Location }
+  | TBang   { _tloc :: Location }
+  | TSemi   { _tloc :: Location }
   | TColon  { _tloc :: Location }
   | TLBrace { _tloc :: Location }
   | TRBrace { _tloc :: Location }
+  | TLAngle { _tloc :: Location }
+  | TRAngle { _tloc :: Location }
   | TEqual  { _tloc :: Location }
+  | TRef    { _tloc :: Location }
   | TFun    { _tloc :: Location }
   | TFix    { _tloc :: Location }
   | TRArrow { _tloc :: Location }
+  | TWhile  { _tloc :: Location }
+  | TDo     { _tloc :: Location }
+  | TEnd    { _tloc :: Location }
+  | TArray  { _tloc :: Location }
   | TIf     { _tloc :: Location }
   | TThen   { _tloc :: Location }
   | TElse   { _tloc :: Location }
@@ -111,6 +122,11 @@ instance NFData Expr
 instance Located Expr where
   locate e = e^.eloc
 
+infixr 6 <+>
+(<+>) :: Text -> Text -> Text
+t1 <+> t2 = t1 <> " " <> t2
+{-# INLINE (<+>) #-}
+
 opType :: Type -> Op -> Type
 opType _ Lte = TyLit "Bool"
 opType t _   = t
@@ -123,28 +139,33 @@ ppOp Divide = "/"
 ppOp Lte    = "<="
 
 ppExpr :: Expr -> Text
-ppExpr (EEmpty _)          = ""
-ppExpr (ECons _ e1 e2)     = T.concat [ppExpr e1, ":", ppExpr e2]
-ppExpr (ESig _ e _)        = ppExpr e
-ppExpr (EVar _ n)          = n
-ppExpr (EInt _ n)          = T.pack $ show n
-ppExpr (EFloat _ f)        = T.pack $ show f
-ppExpr (EBool _ True)      = "true"
-ppExpr (EBool _ False)     = "false"
-ppExpr (ETuple _ es)       = T.concat ["(", T.intercalate "," (map ppExpr es), ")"]
-ppExpr (EList  _ es)       = T.concat ["[", T.intercalate "," (map ppExpr es), "]"]
-ppExpr (EApp _ e1 e2)      = T.concat ["(", ppExpr e1, " ", ppExpr e2, ")"]
-ppExpr (EOp _ o e1 e2)     = T.concat ["(", ppOp o, " ",  ppExpr e1, " ", ppExpr e2, ")"]
-ppExpr (EIf _ e1 e2 e3)    = T.concat ["(if ", ppExpr e1, " ", ppExpr e2, " ", ppExpr e3, ")"]
-ppExpr (ELet _ n e1 e2)    = T.concat ["(let (", n, " = ", ppExpr e1, ") ", ppExpr e2, ")"]
-ppExpr (EFix _ f n e)      = T.concat ["(fix ", f, " ", n, " -> ", ppExpr e, ")"]
-ppExpr (ELam _ n e)        = T.concat ["(fun ", n, " -> ", ppExpr e, ")"]
+ppExpr (EEmpty _)       = ""
+ppExpr (ECons _ e1 e2)  = ppExpr e1 <> ":" <> ppExpr e2
+ppExpr (ESig _ e _)     = ppExpr e
+ppExpr (EVar _ n)       = n
+ppExpr (EInt _ n)       = T.pack $ show n
+ppExpr (EFloat _ f)     = T.pack $ show f
+ppExpr (EBool _ True)   = "true"
+ppExpr (EBool _ False)  = "false"
+ppExpr (ETuple _ es)    = "(" <> T.intercalate "," (map ppExpr es) <> ")"
+ppExpr (EList  _ es)    = "[" <> T.intercalate "," (map ppExpr es) <> "]"
+ppExpr (EApp _ e1 e2)   = "(" <> ppExpr e1 <+> ppExpr e2 <> ")"
+ppExpr (EOp _ o e1 e2)  = "(" <> ppOp o <+> ppExpr e1 <+> ppExpr e2 <> ")"
+ppExpr (EIf _ e1 e2 e3) = "(if " <> ppExpr e1 <+> ppExpr e2 <+> ppExpr e3 <> ")"
+ppExpr (ELet _ n e1 e2) = "(let (" <> n <> " = " <> ppExpr e1 <> ") " <> ppExpr e2 <> ")"
+ppExpr (EFix _ f n e)   = "(fix " <> f <+> n <+> "->" <+> ppExpr e <> ")"
+ppExpr (ELam _ n e)     = "(fun " <> n <+> "->" <+> ppExpr e <> ")"
 
 ppToken :: Token -> Text
 ppToken (TLParen _)     = "("
 ppToken (TRParen _)     = ")"
+ppToken (TLAngle _)     = "<"
+ppToken (TRAngle _)     = ">"
 ppToken (TLte _)        = "<="
 ppToken (TComma _)      = ","
+ppToken (TCEq _)        = ":="
+ppToken (TBang _)       = "!"
+ppToken (TSemi _)       = ";"
 ppToken (TDColon _)     = "::"
 ppToken (TColon _)      = ":"
 ppToken (TLBrace _)     = "["
@@ -156,6 +177,7 @@ ppToken (TThen _)       = "then"
 ppToken (TElse _)       = "else"
 ppToken (TLet _)        = "let"
 ppToken (TIn _)         = "in"
+ppToken (TRef _)        = "ref"
 ppToken (TFun _)        = "fun"
 ppToken (TFix _)        = "fix"
 ppToken (TPlus _)       = "+"
@@ -170,16 +192,16 @@ ppToken (TInt _ n)      = T.pack $ show n
 ppToken (TFloat _ f)    = T.pack $ show f
 
 ppTokenList :: [Token] -> Text
-ppTokenList ts = T.concat ["[", T.intercalate ", " (map ppToken ts), "]"]
+ppTokenList ts = "[" <> T.intercalate ", " (map ppToken ts) <> "]"
 
 ppType :: Type -> Text
 ppType (TyLit t) = t
 ppType (TyVar t) = t
-ppType (TyGenSym i) = T.concat ["t", T.pack (show i)]
+ppType (TyGenSym i) = "t" <> T.pack (show i)
 ppType (TyTuple ts) = T.concat ["(", T.intercalate "," (map ppType ts), ")"]
 ppType (TyList t) = T.concat ["[", ppType t, "]"]
 ppType (TyArr t1@TyArr{} t2) = T.concat ["(", ppType t1, ") -> ", ppType t2]
-ppType (TyArr t1 t2) = T.concat [ppType t1, " -> ", ppType t2]
+ppType (TyArr t1 t2)         = ppType t1 <+> "->" <+> ppType t2
 
 -- n.b. VBools are handled differently because the object language uses
 -- lowercase for booleans, whereas Haskell uses uppercase identifiers.

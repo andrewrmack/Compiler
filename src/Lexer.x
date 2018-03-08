@@ -33,11 +33,16 @@ tokens :-
 $white+  ;
 \,       { \p s -> TComma  (loc p)                 }
 \(       { \p s -> TLParen (loc p)                 }
+\!       { \p s -> TBang   (loc p)                 }
 \)       { \p s -> TRParen (loc p)                 }
 \[       { \p s -> TLBrace (loc p)                 }
 \]       { \p s -> TRBrace (loc p)                 }
+\<       { \p s -> TLAngle (loc p)                 }
+\>       { \p s -> TRAngle (loc p)                 }
 \:\:     { \p s -> TDColon (loc p)                 }
+\:\=     { \p s -> TCEq    (loc p)                 }
 \:       { \p s -> TColon  (loc p)                 }
+\;       { \p s -> TSemi   (loc p)                 }
 \+       { \p s -> TPlus   (loc p)                 }
 \-       { \p s -> TMinus  (loc p)                 }
 \*       { \p s -> TTimes  (loc p)                 }
@@ -50,8 +55,13 @@ then     { \p s -> TThen   (loc p)                 }
 else     { \p s -> TElse   (loc p)                 }
 let      { \p s -> TLet    (loc p)                 }
 in       { \p s -> TIn     (loc p)                 }
+do       { \p s -> TDo     (loc p)                 }
+while    { \p s -> TWhile  (loc p)                 }
+end      { \p s -> TEnd    (loc p)                 }
+ref      { \p s -> TRef    (loc p)                 }
 fun      { \p s -> TFun    (loc p)                 }
 fix      { \p s -> TFix    (loc p)                 }
+Array    { \p s -> TArray  (loc p)                 }
 true     { \p s -> TBool   (loc p) True            }
 false    { \p s -> TBool   (loc p) False           }
 NaN      { \p s -> TFloat  (loc p) (0.0 / 0.0)     }
