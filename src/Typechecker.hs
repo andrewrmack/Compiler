@@ -37,6 +37,34 @@ typecheck' _ e@EEmpty{} = (,e) <$> freshGenSym
 typecheck' _ e@EInt{} = return (TyLit "Int", e)
 typecheck' _ e@EFloat{} = return (TyLit "Float", e)
 typecheck' _ e@EBool{} = return (TyLit "Bool", e)
+typecheck' _ e@ENewArr{} = return (TyArray (_etype e), e)
+typecheck' g e@EArrAcc{} = do
+  (t1,e1) <- typecheck' g (_earr e)
+  (t2,e2) <- typecheck' g (_eind e)
+  tmp1 <- freshGenSym
+  case (unify t1 (TyArray tmp1), unify t2 (TyLit "Int")) of
+    (Just t, Just _) -> return (t, e & earr .~ e1 & eind .~ e2)
+    (Just _, Nothing) -> locatedError (locate e) "Array index must be an Int"
+    _ -> locatedError (locate e) $ "Cannot index non-array " <> ppExpr e1
+typecheck' g e@ERef{} = do
+  (t,e') <- typecheck' g (_eexpr e)
+  return (TyRef t, e')
+typecheck' g e@ESeq{} = do
+  !_ <- typecheck' g (_efst e)
+  typecheck' g (_esnd e)
+typecheck' g e@EDeref{} = do
+  (t,e') <- typecheck' g (_eexpr e)
+  tmp <- freshGenSym
+  case unify (TyRef tmp) t of
+    Just (TyRef t') -> return (t', e')
+    _ -> locatedError (locate e) "Can't dereference not reference type"
+typecheck' g e@EAssign{} = do
+  (t1,e1) <- typecheck' g (_edst e)
+  (t2,e2) <- typecheck' g (_eexpr e)
+  case unify t1 t2 of
+    Just t -> return (t, e & edst .~ e1 & eexpr .~ e2)
+    Nothing -> locatedError (locate e) $
+      "Can't unify " <> ppType t1 <> " with " <> ppType t2 <> " in assignment " <> ppExpr e
 typecheck' g e@EVar{} = case H.lookup (_evar e) g of
                           Just t -> return (t, e)
                           Nothing -> case lookup (_evar e) builtins of
@@ -51,7 +79,7 @@ typecheck' g e@ECons{} = do
     Nothing -> locatedError (locate e) "Can't cons invalid list"
 typecheck' g e@ESig{} = do
   let t1 = _etype e
-  (t2,e') <- typecheck' g (_eexp e)
+  (t2,e') <- typecheck' g (_eexpr e)
   case unify t1 t2 of
     Just t -> return (t, e')
     Nothing -> locatedError (locate e) $
@@ -90,6 +118,13 @@ typecheck' g e@EOp{} = do
             _ -> locatedError (locate (_eopp1 e)) $
               "Unexpected type " <> ppType t1 <> ". Expected Float"
   return (t, (e & eopp1 .~ e1) & eopp2 .~ e2)
+typecheck' g e@EWhile{} = do
+  (t1,e1) <- typecheck' g (_eguard e)
+  (t2,e2) <- typecheck' g (_ebody e)
+  case unify t1 (TyLit "Bool") of
+    Just _ -> return (t2, e & eguard .~ e1 & ebody .~ e2)
+    _ -> locatedError (locate e) $
+      "Expected Bool in guard of while. Given " <> ppType t1
 typecheck' g e@EIf{} = do
   (t1,e1) <- typecheck' g (_eif e)
   (t2,e2) <- typecheck' g (_ethen e)
@@ -130,6 +165,8 @@ unify t1 t2
         -- Arrows unify if their parts unify
         (TyArr t11 t12, TyArr t21 t22) -> TyArr <$> unify t11 t21 <*> unify t12 t22
         (TyList t1', TyList t2') -> TyList <$> unify t1' t2'
+        (TyArray t1', TyArray t2') -> TyArray <$> unify t1' t2'
+        (TyRef t1', TyRef t2') -> TyRef <$> unify t1' t2'
         -- Tuples unify if their types unify
         -- zipWithM will let you get away with different lengths, though
         (TyTuple t1s, TyTuple t2s) -> if length t1s == length t2s

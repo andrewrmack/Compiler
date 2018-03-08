@@ -110,7 +110,7 @@ data Expr =
   | ENewArr { _eloc :: Location, _etype :: Type, _esize :: Int }
   | EArrAcc { _eloc :: Location, _earr :: Expr, _eind :: Expr }
   | ECons   { _eloc :: Location, _eelem :: Expr, _elist :: Expr }
-  | ESig    { _eloc :: Location, _eexp :: Expr, _etype :: Type }
+  | ESig    { _eloc :: Location, _eexpr :: Expr, _etype :: Type }
   | EInt    { _eloc :: Location, _eint :: {-# UNPACK #-} !Int }
   | EFloat  { _eloc :: Location, _efloat ::  {-# UNPACK #-} !Double }
   | EVar    { _eloc :: Location, _evar :: !Name }
