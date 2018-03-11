@@ -23,11 +23,13 @@ library:
     - array
     - bytestring
     - bytestring-lexing
+    - containers
     - deepseq
     - lens
     - mtl
     - text
     - unordered-containers
+    - vector
   ghc-options:
     - -O2
     - -Wall

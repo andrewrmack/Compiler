@@ -1,15 +1,41 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Interpreter (evaluate, interpret) where
 
+import Control.Monad.State
+import Control.Lens
 import Data.ByteString.Lazy     (ByteString)
 import Data.Monoid              ((<>))
 import Data.Text                (Text)
+import qualified Data.IntMap as M
+import qualified Data.Vector as V
 import Error
 import Lexer
 import Parser
 import Lang
 import Location
 import Typechecker
+
+data Env = Env
+  { _refs :: M.IntMap Expr
+  , _arrs :: M.IntMap (V.Vector Expr)
+  , _rint :: {-# UNPACK #-} !Int
+  , _aint :: {-# UNPACK #-} !Int
+  }
+makeLenses ''Env
+
+initialEnv :: Env
+initialEnv = Env M.empty M.empty 0 0
+
+lookupRef :: MonadState Env m => Int -> m (Maybe Expr)
+lookupRef n = M.lookup n . _refs <$> get
+
+updateRef :: MonadState Env m => Int -> Expr -> m ()
+updateRef n e = modify $ M.insert n e
+
+lookupArrAtIndex :: MonadState Env m => Int -> Int -> m (Maybe Expr)
+lookupArrAtIndex n i = (!? i) . M.lookup n . _arrs <$> get
 
 evaluate :: ByteString -> Compiler Text
 evaluate = fmap ppValue . interpret . typecheck . parse . lexer
@@ -58,7 +84,7 @@ interpretBuiltinApp "tail" e = do
 interpretBuiltinApp s e = locatedError (locate e) $
   s <> " is not a builtin function"
 
-simplify :: Expr -> Compiler Expr
+simplify :: Expr -> StateT Env Compiler Expr
 simplify e@(EEmpty _)   = return e
 simplify (ESig _ e _)   = simplify e
 simplify v@(EVar _ _)   = return v

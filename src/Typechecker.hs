@@ -43,7 +43,7 @@ typecheck' g e@EArrAcc{} = do
   (t2,e2) <- typecheck' g (_eind e)
   tmp1 <- freshGenSym
   case (unify t1 (TyArray tmp1), unify t2 (TyLit "Int")) of
-    (Just t, Just _) -> return (t, e & earr .~ e1 & eind .~ e2)
+    (Just (TyArray t), Just _) -> return (t, e & earr .~ e1 & eind .~ e2)
     (Just _, Nothing) -> locatedError (locate e) "Array index must be an Int"
     _ -> locatedError (locate e) $ "Cannot index non-array " <> ppExpr e1
 typecheck' g e@ERef{} = do
