@@ -87,8 +87,7 @@ typeFile file = do
 interpretFile :: String -> IO ()
 interpretFile file = do
   contents <- BL.readFile file
-  let evaled   = evaluate contents
-  let warnings = getWarnings evaled
-  let results  = runCompiler evaled
+  let evaled = evaluate contents
+  let (results, warnings) = runCompiler evaled
   showWarnings warnings
   TIO.putStrLn results
