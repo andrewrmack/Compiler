@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 60a980ec711480c5c9820d056d3ba4344c178a4c163f8dd596205042403c8246
+-- hash: b8634b4a41691d33864fc725d66b2643eca4096499a8c9e02194a6ef9fe5419a
 
 name:           compiler
 version:        0.5.0
@@ -34,7 +34,6 @@ library
     , bytestring
     , bytestring-lexing
     , deepseq
-    , lens
     , mtl
     , text
     , unordered-containers

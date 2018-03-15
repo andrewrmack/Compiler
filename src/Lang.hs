@@ -1,10 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
 module Lang where
 
 import Control.DeepSeq          (NFData)
-import Control.Lens
 import Data.Text                (Text)
 import qualified Data.Text as T
 import GHC.Generics             (Generic)
@@ -35,40 +33,39 @@ instance NFData Op
 type Name = Text
 
 data Token =
-    TLParen { _tloc :: Location }
-  | TRParen { _tloc :: Location }
-  | TLte    { _tloc :: Location }
-  | TComma  { _tloc :: Location }
-  | TDColon { _tloc :: Location }
-  | TColon  { _tloc :: Location }
-  | TLBrace { _tloc :: Location }
-  | TRBrace { _tloc :: Location }
-  | TEqual  { _tloc :: Location }
-  | TFun    { _tloc :: Location }
-  | TFix    { _tloc :: Location }
-  | TRArrow { _tloc :: Location }
-  | TIf     { _tloc :: Location }
-  | TThen   { _tloc :: Location }
-  | TElse   { _tloc :: Location }
-  | TLet    { _tloc :: Location }
-  | TIn     { _tloc :: Location }
-  | TPlus   { _tloc :: Location }
-  | TMinus  { _tloc :: Location }
-  | TTimes  { _tloc :: Location }
-  | TDivide { _tloc :: Location }
-  | TBool   { _tloc :: Location, _tbool :: !Bool }
-  | TLid    { _tloc :: Location, _tid :: !Name }
-  | TUid    { _tloc :: Location, _tid :: !Name }
-  | TInt    { _tloc :: Location, _tint ::{-# UNPACK #-} !Int }
-  | TFloat  { _tloc :: Location, _tfloat :: {-# UNPACK #-} !Double }
+    TLParen { tloc :: Location }
+  | TRParen { tloc :: Location }
+  | TLte    { tloc :: Location }
+  | TComma  { tloc :: Location }
+  | TDColon { tloc :: Location }
+  | TColon  { tloc :: Location }
+  | TLBrace { tloc :: Location }
+  | TRBrace { tloc :: Location }
+  | TEqual  { tloc :: Location }
+  | TFun    { tloc :: Location }
+  | TFix    { tloc :: Location }
+  | TRArrow { tloc :: Location }
+  | TIf     { tloc :: Location }
+  | TThen   { tloc :: Location }
+  | TElse   { tloc :: Location }
+  | TLet    { tloc :: Location }
+  | TIn     { tloc :: Location }
+  | TPlus   { tloc :: Location }
+  | TMinus  { tloc :: Location }
+  | TTimes  { tloc :: Location }
+  | TDivide { tloc :: Location }
+  | TBool   { tloc :: Location, tbool :: !Bool }
+  | TLid    { tloc :: Location, tid :: !Name }
+  | TUid    { tloc :: Location, tid :: !Name }
+  | TInt    { tloc :: Location, tint ::{-# UNPACK #-} !Int }
+  | TFloat  { tloc :: Location, tfloat :: {-# UNPACK #-} !Double }
   deriving (Generic)
-
-makeLenses ''Token
 
 instance NFData Token
 
 instance Located Token where
-  locate t = t^.tloc
+  locate = tloc
+  {-# INLINE locate #-}
 
 data Type =
     TyLit Name
@@ -79,37 +76,35 @@ data Type =
   | TyArr Type Type
   deriving (Generic,Eq)
 
-makePrisms ''Type
-
 instance NFData Type
 
 instance Located Type where
-  locate _ = NoLocation
+  locate = const NoLocation
+  {-# INLINE locate #-}
 
 data Expr =
-    EEmpty  { _eloc :: Location }
-  | ECons   { _eloc :: Location, _eelem :: Expr, _elist :: Expr }
-  | ESig    { _eloc :: Location, _eexp :: Expr, _etype :: Type }
-  | EInt    { _eloc :: Location, _eint :: {-# UNPACK #-} !Int }
-  | EFloat  { _eloc :: Location, _efloat ::  {-# UNPACK #-} !Double }
-  | EVar    { _eloc :: Location, _evar :: !Name }
-  | EBool   { _eloc :: Location, _ebool :: !Bool }
-  | ETuple  { _eloc :: Location, _eelems :: ![Expr] }
-  | EList   { _eloc :: Location, _eelems :: ![Expr] }
-  | EApp    { _eloc :: Location, _eapp1 :: !Expr, _eapp2 :: !Expr }
-  | EOp     { _eloc :: Location, _eop :: !Op, _eopp1 :: !Expr, _eopp2 :: !Expr }
-  | EIf     { _eloc :: Location, _eif :: !Expr, _ethen :: Expr, _eelse :: Expr }
-  | ELet    { _eloc :: Location, _ename :: !Name, _ebind :: Expr, _ein :: Expr }
-  | EFix    { _eloc :: Location, _efun :: !Name, _evar :: !Name, _ebody :: Expr }
-  | ELam    { _eloc :: Location, _evar :: !Name, _ebody :: Expr }
+    EEmpty  { eloc :: Location }
+  | ECons   { eloc :: Location, eelem :: Expr, elist :: Expr }
+  | ESig    { eloc :: Location, eexp :: Expr, etype :: Type }
+  | EInt    { eloc :: Location, eint :: {-# UNPACK #-} !Int }
+  | EFloat  { eloc :: Location, efloat ::  {-# UNPACK #-} !Double }
+  | EVar    { eloc :: Location, evar :: !Name }
+  | EBool   { eloc :: Location, ebool :: !Bool }
+  | ETuple  { eloc :: Location, eelems :: ![Expr] }
+  | EList   { eloc :: Location, eelems :: ![Expr] }
+  | EApp    { eloc :: Location, eapp1 :: !Expr, eapp2 :: !Expr }
+  | EOp     { eloc :: Location, eop :: !Op, eopp1 :: !Expr, eopp2 :: !Expr }
+  | EIf     { eloc :: Location, eif :: !Expr, ethen :: Expr, eelse :: Expr }
+  | ELet    { eloc :: Location, ename :: !Name, ebind :: Expr, ein :: Expr }
+  | EFix    { eloc :: Location, efun :: !Name, evar :: !Name, ebody :: Expr }
+  | ELam    { eloc :: Location, evar :: !Name, ebody :: Expr }
   deriving (Generic)
-
-makeLenses ''Expr
 
 instance NFData Expr
 
 instance Located Expr where
-  locate e = e^.eloc
+  locate  = eloc
+  {-# INLINE locate #-}
 
 opType :: Type -> Op -> Type
 opType _ Lte = TyLit "Bool"
