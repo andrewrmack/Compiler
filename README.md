@@ -49,9 +49,23 @@ exp := exp +  exp
      | fun x -> exp
      | fix f x -> exp
      | exp exp
+     | exp ; exp
+     | exp<int>
+     | !exp
+     | while exp do exp end
+     | exp := exp
 ```
 
 ## Changelog
+
+### [assignment-06] - 2018-03-16
+#### Added
+- Mutable variables and arrays
+- While loops
+#### Changed
+- None
+#### Known Bugs
+- Type inference hasn't been fixed yet
 
 ### [assignment-05] - 2018-03-02
 I'm using a token on this one
