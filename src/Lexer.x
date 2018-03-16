@@ -38,45 +38,82 @@ $namechar = [a-zA-Z0-9'_] @decimal  = $digit+
 tokens :-
 
 $white+  ;
-\-\-.*\n ;
-\,       { token $ \(p,_,s,_) n -> TComma  (loc p)   }
-\(       { token $ \(p,_,s,_) n -> TLParen (loc p)   }
-\)       { token $ \(p,_,s,_) n -> TRParen (loc p)   }
-\[       { token $ \(p,_,s,_) n -> TLBrace (loc p)   }
-\]       { token $ \(p,_,s,_) n -> TRBrace (loc p)   }
-\:\:     { token $ \(p,_,s,_) n -> TDColon (loc p)   }
-\:       { token $ \(p,_,s,_) n -> TColon  (loc p)   }
-\+       { token $ \(p,_,s,_) n -> TPlus   (loc p)   }
-\-       { token $ \(p,_,s,_) n -> TMinus  (loc p)   }
-\*       { token $ \(p,_,s,_) n -> TTimes  (loc p)   }
-\/       { token $ \(p,_,s,_) n -> TDivide (loc p)   }
-\<\=     { token $ \(p,_,s,_) n -> TLte    (loc p)   }
-\=       { token $ \(p,_,s,_) n -> TEqual  (loc p)   }
-\-\>     { token $ \(p,_,s,_) n -> TRArrow (loc p)   }
-if       { token $ \(p,_,s,_) n -> TIf     (loc p)   }
-then     { token $ \(p,_,s,_) n -> TThen   (loc p)   }
-else     { token $ \(p,_,s,_) n -> TElse   (loc p)   }
-let      { token $ \(p,_,s,_) n -> TLet    (loc p)   }
-in       { token $ \(p,_,s,_) n -> TIn     (loc p)   }
-fun      { token $ \(p,_,s,_) n -> TFun    (loc p)   }
-fix      { token $ \(p,_,s,_) n -> TFix    (loc p)   }
-true     { token $ \(p,_,s,_) n -> TBool   (loc p) True         }
-false    { token $ \(p,_,s,_) n -> TBool   (loc p) False        }
-NaN      { token $ \(p,_,s,_) n -> TFloat  (loc p) (0.0 / 0.0)  }
-@float   { token $ \(p,_,s,_) n -> TFloat  (loc p) (lexFloat p (B.take n s)) }
-@decimal { token $ \(p,_,s,_) n -> TInt    (loc p) (lexInt p (B.take n s))   }
-@lname   { token $ \(p,_,s,_) n -> TLid    (loc p) (fromBS (B.take n s))  }
-@uname   { token $ \(p,_,s,_) n -> TUid    (loc p) (fromBS (B.take n s))  }
-.        { \(n,_,s,_) _ -> lexErrorOn n s                        }
+
+<ncomment> {
+ \{\- { openComment }
+ .    { skip }
+ \-\} { closeComment }
+}
+
+<0> {
+ \-\-.*\n ;
+ \{\-     { openComment                               }
+ \,       { token $ \(p,_,s,_) n -> TComma  (loc p)   }
+ \(       { token $ \(p,_,s,_) n -> TLParen (loc p)   }
+ \)       { token $ \(p,_,s,_) n -> TRParen (loc p)   }
+ \[       { token $ \(p,_,s,_) n -> TLBrace (loc p)   }
+ \]       { token $ \(p,_,s,_) n -> TRBrace (loc p)   }
+ \:\:     { token $ \(p,_,s,_) n -> TDColon (loc p)   }
+ \:       { token $ \(p,_,s,_) n -> TColon  (loc p)   }
+ \+       { token $ \(p,_,s,_) n -> TPlus   (loc p)   }
+ \-       { token $ \(p,_,s,_) n -> TMinus  (loc p)   }
+ \*       { token $ \(p,_,s,_) n -> TTimes  (loc p)   }
+ \/       { token $ \(p,_,s,_) n -> TDivide (loc p)   }
+ \<\=     { token $ \(p,_,s,_) n -> TLte    (loc p)   }
+ \=       { token $ \(p,_,s,_) n -> TEqual  (loc p)   }
+ \-\>     { token $ \(p,_,s,_) n -> TRArrow (loc p)   }
+ if       { token $ \(p,_,s,_) n -> TIf     (loc p)   }
+ then     { token $ \(p,_,s,_) n -> TThen   (loc p)   }
+ else     { token $ \(p,_,s,_) n -> TElse   (loc p)   }
+ let      { token $ \(p,_,s,_) n -> TLet    (loc p)   }
+ in       { token $ \(p,_,s,_) n -> TIn     (loc p)   }
+ fun      { token $ \(p,_,s,_) n -> TFun    (loc p)   }
+ fix      { token $ \(p,_,s,_) n -> TFix    (loc p)   }
+ true     { token $ \(p,_,s,_) n -> TBool   (loc p) True         }
+ false    { token $ \(p,_,s,_) n -> TBool   (loc p) False        }
+ NaN      { token $ \(p,_,s,_) n -> TFloat  (loc p) (0.0 / 0.0)  }
+ @float   { token $ \(p,_,s,_) n -> TFloat  (loc p) (lexFloat p (B.take n s)) }
+ @decimal { token $ \(p,_,s,_) n -> TInt    (loc p) (lexInt p (B.take n s))   }
+ @lname   { token $ \(p,_,s,_) n -> TLid    (loc p) (fromBS (B.take n s))  }
+ @uname   { token $ \(p,_,s,_) n -> TUid    (loc p) (fromBS (B.take n s))  }
+ .        { \(n,_,s,_) _ -> lexErrorOn n s                        }
+}
 
 {
 newtype AlexUserState = AlexUserState { commentDepth :: Int }
+
+openComment :: AlexAction Token
+openComment s n = do
+  alexSetStartCode ncomment
+  incrementCommentDepth
+  skip s n
+
+closeComment :: AlexAction Token
+closeComment s n = do
+  decrementCommentDepth
+  b <- isCommentEnd
+  when b (alexSetStartCode 0)
+  skip s n
+
+isCommentEnd :: Alex Bool
+isCommentEnd = Alex $ \s@AlexState{alex_ust=ust} ->
+  Right (s, 0 == commentDepth ust)
+
+incrementCommentDepth :: Alex ()
+incrementCommentDepth = Alex $ \s@AlexState{alex_ust=ust} ->
+  Right (s{alex_ust=ust{commentDepth = (commentDepth ust) + 1}}, ())
+
+decrementCommentDepth :: Alex ()
+decrementCommentDepth = Alex $ \s@AlexState{alex_ust=ust} ->
+  Right (s{alex_ust=ust{commentDepth = (commentDepth ust) - 1}}, ())
 
 alexInitUserState :: AlexUserState
 alexInitUserState = AlexUserState 0
 
 alexEOF :: Alex Token
-alexEOF = return (TEof NoLocation)
+alexEOF = do
+  b <- isCommentEnd
+  if b then return (TEof NoLocation) else locatedError NoLocation "Unclosed comment"
 
 lexerP :: (Token -> Alex a) -> Alex a
 lexerP = (alexMonadScan >>=)
