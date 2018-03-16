@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b8634b4a41691d33864fc725d66b2643eca4096499a8c9e02194a6ef9fe5419a
+-- hash: 5f672f557a9b447ed3181bda92d86e2d89e2b5be747e4dd8d0e9a145564c1cef
 
 name:           compiler
 version:        0.5.0
@@ -62,6 +62,7 @@ executable compiler
       base >=4.7 && <5
     , bytestring
     , compiler
+    , haskeline
     , optparse-applicative
     , text
   other-modules:

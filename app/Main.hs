@@ -1,11 +1,14 @@
 module Main where
 
+import Control.Monad.IO.Class
 import Data.Maybe          (listToMaybe, fromMaybe)
 import Data.Semigroup      ((<>))
 import qualified Data.Text.IO as TIO
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Lazy.Char8 as BLC
 import Data.Version        (showVersion)
 import Options.Applicative
+import System.Console.Haskeline
 
 import Error
 import Lang
@@ -15,7 +18,7 @@ import Typechecker
 import Interpreter
 import Paths_compiler      (version)
 
-data Mode = Default | LexDump | ParseDump | TypeDump
+data Mode = Default | LexDump | ParseDump | TypeDump | Interactive
 data Args = Args
   { versionFlag :: Bool
   , input :: [FilePath]
@@ -43,8 +46,15 @@ parseTypeFlag = flag Default TypeDump
   ( long "ddump-typecheck"
  <> help "print the result of typechecking to standard output" )
 
+parseInterFlag :: Parser Mode
+parseInterFlag = flag' Interactive
+  ( long "interactive"
+ <> short 'i'
+ <> help "Run and interactive REPL" )
+
+
 parseMode :: Parser Mode
-parseMode = parseLexerFlag <|> parseParserFlag <|> parseTypeFlag
+parseMode = parseInterFlag <|> parseLexerFlag <|> parseParserFlag <|> parseTypeFlag
 
 parseFileName :: Parser [String]
 parseFileName = many $ argument str (metavar "FILE")
@@ -59,6 +69,7 @@ main = do
   then putStrLn $ "compiler, version " ++ showVersion version
   else case compileMode of
          Default -> interpretFile (fromMaybe fileError (listToMaybe filepath))
+         Interactive -> interactive
          LexDump -> lexFile (fromMaybe fileError (listToMaybe filepath))
          ParseDump -> parseFile (fromMaybe fileError (listToMaybe filepath))
          TypeDump -> typeFile (fromMaybe fileError (listToMaybe filepath))
@@ -88,10 +99,26 @@ typeFile file = do
   contents <- BL.readFile file
   TIO.putStrLn $ ppType (getType (parse contents))
 
-interpretFile :: String -> IO ()
-interpretFile file = do
-  contents <- BL.readFile file
+interactive :: IO ()
+interactive = runInputT defaultSettings loop
+  where
+    loop :: InputT IO ()
+    loop = do
+      minput <- getInputLine ">>> "
+      case minput of
+        Nothing -> return ()
+        Just sinput -> do
+          liftIO $ doEval (BLC.pack sinput)
+          loop
+
+doEval :: BL.ByteString -> IO ()
+doEval contents = do
   let evaled = evaluate contents
   let (results, warnings) = runCompiler evaled
   showWarnings warnings
   TIO.putStrLn results
+
+interpretFile :: String -> IO ()
+interpretFile file = do
+  contents <- BL.readFile file
+  doEval contents
