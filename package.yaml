@@ -73,6 +73,7 @@ benchmarks:
     - compiler
     - criterion
     - deepseq
+    - mtl
     - text
     ghc-options:
     - -threaded
