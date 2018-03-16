@@ -52,6 +52,25 @@ exp := exp +  exp
 ```
 
 ## Changelog
+### [final-project] - 2018-03-16
+#### Added
+- Single line comments (-- comment)
+- Nested, multi-line comments ({- comment -})
+- A REPL
+#### Changed
+- No more state (you said this was fine)
+#### Known Bugs
+- Type inference hasn't been fixed yet
+
+### [assignment-06] - 2018-03-16
+#### Added
+- Mutable variables and arrays
+- While loops
+#### Changed
+- None
+#### Known Bugs
+- Type inference hasn't been fixed yet
+
 
 ### [assignment-05] - 2018-03-02
 I'm using a token on this one
