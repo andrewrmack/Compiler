@@ -1,5 +1,6 @@
 module Main where
 
+import Control.Exception.Base (ErrorCall(..))
 import Control.Monad.IO.Class
 import Data.Maybe          (listToMaybe, fromMaybe)
 import Data.Semigroup      ((<>))
@@ -9,6 +10,7 @@ import qualified Data.ByteString.Lazy.Char8 as BLC
 import Data.Version        (showVersion)
 import Options.Applicative
 import System.Console.Haskeline
+import System.IO
 
 import Error
 import Lang
@@ -108,7 +110,7 @@ interactive = runInputT defaultSettings loop
       case minput of
         Nothing -> return ()
         Just sinput -> do
-          liftIO $ doEval (BLC.pack sinput)
+          liftIO $ doEval (BLC.pack sinput) `catch` \(ErrorCall s) -> hPutStrLn stderr s
           loop
 
 doEval :: BL.ByteString -> IO ()
