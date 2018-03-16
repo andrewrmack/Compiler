@@ -1,0 +1,1 @@
+let x = new Int<6> in x<1> := 2; x<1>

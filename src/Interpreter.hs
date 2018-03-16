@@ -32,6 +32,11 @@ lookupRef n = M.lookup n . _refs <$> get
 updateRef :: MonadState Env m => Int -> Expr -> m ()
 updateRef n e = modify $ \s -> s{_refs=M.insert n e (_refs s)}
 
+updateArrRef :: MonadState Env m => Int -> Int -> Expr -> m ()
+updateArrRef n i e = modify $ \s ->
+  let arr = M.findWithDefault (errorWithoutStackTrace "Array not found") n (_arrs s)
+   in s{_arrs=M.insert n (arr V.// [(i,e)]) (_arrs s)}
+
 lookupArrAtIndex :: MonadState Env m => Int -> Int -> m (Maybe Expr)
 lookupArrAtIndex n i = join . fmap (V.!? i) . M.lookup n . _arrs <$> get
 
@@ -41,10 +46,11 @@ getNewRef = do
   modify $ \s -> s{_rint=ref+1}
   return ref
 
-getNewArrRef :: MonadState Env m => m Int
-getNewArrRef = do
+makeNewArrRef :: MonadState Env m => Int -> m Int
+makeNewArrRef n = do
   ref <- _aint <$> get
-  modify $ \s -> s{_aint=ref+1}
+  arr <- _arrs <$> get
+  modify $ \s -> s{_aint=ref+1, _arrs=M.insert ref (V.replicate n (EEmpty NoLocation)) arr}
   return ref
 
 evaluate :: ByteString -> Compiler Text
@@ -108,21 +114,44 @@ simplify (ESeq _ e1 e2) = do
   simplify e2
 simplify (EAssign l e1 e2) = do
   e1' <- simplify e1
-  case e1' of
-    (EPoint l' n) -> do
-      updateRef n e2
+  e2' <- simplify e2 -- Avoid infinite loop from storing !x in x
+  case (e1', e1) of
+    (EPoint l' n,_) -> do
+      updateRef n e2'
       return $ EPoint l' n
+    (_,EArrAcc l' e3 e4) -> do
+      e3' <- simplify e3
+      e4' <- simplify e4
+      case (e3', e4') of
+        (EPoint l'' n, EInt _ i) -> do
+          updateArrRef n i e2'
+          return $ EPoint l'' n
+        _ -> locatedError l' "Cannot assign to non array"
     _ -> locatedError l "Cannot assign to non pointer"
+simplify e@(EWhile l e1 e2) = do
+  e1' <- simplify e1
+  case e1' of
+    (EBool _ False) -> return (EEmpty l)
+    (EBool _ True) -> simplify (ESeq l e2 e)
+    _ -> locatedError l "Non-boolean guard in while loop"
 simplify (EDeref l e) = do
   e' <- simplify e
   case e' of
-    (EPoint _ n) -> fromMaybe (locatedError l ("Could not dereference " <> ppExpr e'))
-                      <$> lookupRef n
+    (EPoint _ n) -> fmap (fromMaybe (locatedError l ("Could not dereference " <> ppExpr e'))) (lookupRef n) >>= simplify
     _ -> locatedError l "Could not dereference non-pointer"
 simplify (ERef l e) = do
   ref <- getNewRef
   updateRef ref e
   return $ EPoint l ref
+simplify (ENewArr l _ n) = do
+  ref <- makeNewArrRef n
+  return $ EPoint l ref
+simplify (EArrAcc l e1 e2) = do
+  e1' <- simplify e1
+  e2' <- simplify e2
+  case (e1',e2') of
+    (EPoint _ n, EInt _ m) -> fmap (fromMaybe (locatedError l "Could not find array")) (lookupArrAtIndex n m) >>= simplify
+    _ -> locatedError l "Could not access array"
 simplify (ECons l e es) = do
   es' <- simplify es
   case es' of
@@ -158,6 +187,7 @@ simplify (EOp l op e1 e2) = do
 
 substitute :: Name -> Expr -> Expr -> StateT Env (State CompilerState) Expr
 substitute _ _ e@(EEmpty _)    = return e
+substitute _ _ e@(EPoint _ _)  = return e
 substitute _ _ e@(EInt _ _)    = return e
 substitute _ _ e@(EFloat _ _)  = return e
 substitute _ _ e@(EBool _ _)   = return e
