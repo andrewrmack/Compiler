@@ -29,7 +29,7 @@ data Op =
   | Times
   | Divide
   | Lte
-  deriving (Generic)
+  deriving (Generic,Show)
 
 instance NFData Op
 
@@ -73,7 +73,7 @@ data Token =
   | TUid    { _tloc :: Location, _tid :: !Name }
   | TInt    { _tloc :: Location, _tint ::{-# UNPACK #-} !Int }
   | TFloat  { _tloc :: Location, _tfloat :: {-# UNPACK #-} !Double }
-  deriving (Generic)
+  deriving (Generic,Show)
 
 makeLenses ''Token
 
@@ -91,7 +91,7 @@ data Type =
   | TyTuple [Type]
   | TyList Type
   | TyArr Type Type
-  deriving (Generic,Eq)
+  deriving (Generic,Eq,Show)
 
 makePrisms ''Type
 
@@ -104,6 +104,7 @@ data Expr =
     EEmpty  { _eloc :: Location }
   | ESeq    { _eloc :: Location, _efst :: Expr, _esnd :: Expr }
   | ERef    { _eloc :: Location, _eexpr :: Expr }
+  | EPoint  { _eloc :: Location, _eref :: Int }
   | EDeref  { _eloc :: Location, _eexpr :: Expr }
   | EAssign { _eloc :: Location, _edst :: Expr, _eexpr :: Expr }
   | EWhile  { _eloc :: Location, _eguard :: Expr, _ebody :: Expr }
@@ -123,7 +124,7 @@ data Expr =
   | ELet    { _eloc :: Location, _ename :: !Name, _ebind :: Expr, _ein :: Expr }
   | EFix    { _eloc :: Location, _efun :: !Name, _evar :: !Name, _ebody :: Expr }
   | ELam    { _eloc :: Location, _evar :: !Name, _ebody :: Expr }
-  deriving (Generic)
+  deriving (Generic,Show)
 
 makeLenses ''Expr
 
@@ -149,6 +150,7 @@ ppOp Divide = "/"
 ppOp Lte    = "<="
 
 ppExpr :: Expr -> Text
+ppExpr (EPoint _ n)      = "&" <> T.pack (show n)
 ppExpr (EEmpty _)        = ""
 ppExpr (ESeq _ e1 e2)    = ppExpr e1 <> ";" <+> ppExpr e2
 ppExpr (ERef _ e)        = "ref (" <> ppExpr e <> ")"

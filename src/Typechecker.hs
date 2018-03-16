@@ -48,20 +48,21 @@ typecheck' g e@EArrAcc{} = do
     _ -> locatedError (locate e) $ "Cannot index non-array " <> ppExpr e1
 typecheck' g e@ERef{} = do
   (t,e') <- typecheck' g (_eexpr e)
-  return (TyRef t, e')
+  return (TyRef t, e{_eexpr=e'})
 typecheck' g e@ESeq{} = do
-  !_ <- typecheck' g (_efst e)
-  typecheck' g (_esnd e)
+  (!_,e1') <- typecheck' g (_efst e)
+  (t, e2') <- typecheck' g (_esnd e)
+  return (t, e{_efst=e1', _esnd=e2'})
 typecheck' g e@EDeref{} = do
   (t,e') <- typecheck' g (_eexpr e)
   tmp <- freshGenSym
   case unify (TyRef tmp) t of
-    Just (TyRef t') -> return (t', e')
+    Just (TyRef t') -> return (t', e{_eexpr=e'})
     _ -> locatedError (locate e) "Can't dereference not reference type"
 typecheck' g e@EAssign{} = do
   (t1,e1) <- typecheck' g (_edst e)
   (t2,e2) <- typecheck' g (_eexpr e)
-  case unify t1 t2 of
+  case unify t1 (TyRef t2) of
     Just t -> return (t, e & edst .~ e1 & eexpr .~ e2)
     Nothing -> locatedError (locate e) $
       "Can't unify " <> ppType t1 <> " with " <> ppType t2 <> " in assignment " <> ppExpr e

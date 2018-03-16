@@ -6,6 +6,7 @@ module Error
   , showWarnings
   , runCompiler
   , Compiler()
+  , CompilerState()
   ) where
 
 import Control.Lens

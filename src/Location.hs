@@ -7,7 +7,7 @@ import GHC.Generics    (Generic)
 data Location = Location {-# UNPACK #-} !Int -- Row
                          {-# UNPACK #-} !Int -- Column
               | NoLocation
-              deriving Generic
+              deriving (Generic,Show)
 
 instance NFData Location
 

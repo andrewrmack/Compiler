@@ -1,11 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TemplateHaskell #-}
-module Interpreter (evaluate, interpret) where
+module Interpreter (evaluate, interpret, initialEnv) where
 
 import Control.Monad.State
-import Control.Lens
 import Data.ByteString.Lazy     (ByteString)
+import Data.Maybe
 import Data.Monoid              ((<>))
 import Data.Text                (Text)
 import qualified Data.IntMap as M
@@ -23,7 +22,6 @@ data Env = Env
   , _rint :: {-# UNPACK #-} !Int
   , _aint :: {-# UNPACK #-} !Int
   }
-makeLenses ''Env
 
 initialEnv :: Env
 initialEnv = Env M.empty M.empty 0 0
@@ -32,16 +30,28 @@ lookupRef :: MonadState Env m => Int -> m (Maybe Expr)
 lookupRef n = M.lookup n . _refs <$> get
 
 updateRef :: MonadState Env m => Int -> Expr -> m ()
-updateRef n e = modify $ M.insert n e
+updateRef n e = modify $ \s -> s{_refs=M.insert n e (_refs s)}
 
 lookupArrAtIndex :: MonadState Env m => Int -> Int -> m (Maybe Expr)
-lookupArrAtIndex n i = (!? i) . M.lookup n . _arrs <$> get
+lookupArrAtIndex n i = join . fmap (V.!? i) . M.lookup n . _arrs <$> get
+
+getNewRef :: MonadState Env m => m Int
+getNewRef = do
+  ref <- _rint <$> get
+  modify $ \s -> s{_rint=ref+1}
+  return ref
+
+getNewArrRef :: MonadState Env m => m Int
+getNewArrRef = do
+  ref <- _aint <$> get
+  modify $ \s -> s{_aint=ref+1}
+  return ref
 
 evaluate :: ByteString -> Compiler Text
-evaluate = fmap ppValue . interpret . typecheck . parse . lexer
+evaluate = fmap ppValue . flip evalStateT initialEnv . interpret . typecheck . parse . lexer
 {-# INLINE evaluate #-}
 
-interpret :: Expr -> Compiler Value
+interpret :: Expr -> StateT Env (State CompilerState) Value
 interpret e = do
   e' <- simplify e
   case e' of
@@ -55,7 +65,7 @@ interpret e = do
 
 -- Until I implement full pattern matching, these have to be
 -- special cases
-interpretBuiltinApp :: Name -> Expr -> Compiler Expr
+interpretBuiltinApp :: Name -> Expr -> StateT Env (State CompilerState) Expr
 interpretBuiltinApp "fst" e = do
   e2 <- simplify e
   case e2 of
@@ -84,13 +94,35 @@ interpretBuiltinApp "tail" e = do
 interpretBuiltinApp s e = locatedError (locate e) $
   s <> " is not a builtin function"
 
-simplify :: Expr -> StateT Env Compiler Expr
+-- The type synonyms can't be partially applied, unfortunately
+simplify :: Expr -> StateT Env (State CompilerState) Expr
 simplify e@(EEmpty _)   = return e
-simplify (ESig _ e _)   = simplify e
 simplify v@(EVar _ _)   = return v
 simplify n@(EInt _ _)   = return n
 simplify b@(EBool _ _)  = return b
 simplify f@(EFloat _ _) = return f
+simplify e@(EPoint _ _) = return e
+simplify (ESig _ e _)   = simplify e
+simplify (ESeq _ e1 e2) = do
+  _ <- simplify e1
+  simplify e2
+simplify (EAssign l e1 e2) = do
+  e1' <- simplify e1
+  case e1' of
+    (EPoint l' n) -> do
+      updateRef n e2
+      return $ EPoint l' n
+    _ -> locatedError l "Cannot assign to non pointer"
+simplify (EDeref l e) = do
+  e' <- simplify e
+  case e' of
+    (EPoint _ n) -> fromMaybe (locatedError l ("Could not dereference " <> ppExpr e'))
+                      <$> lookupRef n
+    _ -> locatedError l "Could not dereference non-pointer"
+simplify (ERef l e) = do
+  ref <- getNewRef
+  updateRef ref e
+  return $ EPoint l ref
 simplify (ECons l e es) = do
   es' <- simplify es
   case es' of
@@ -98,7 +130,10 @@ simplify (ECons l e es) = do
     _ -> locatedError l "Can't cons onto non list"
 simplify (ETuple l es)  = ETuple l <$> mapM simplify es
 simplify (EList l es)   = EList  l <$> mapM simplify es
-simplify (ELet _ n e1 e2) = substitute n e1 e2 >>= simplify
+simplify (ELet _ n e1 e2) = do
+  e1' <- simplify e1 -- It is necessary to force e1 to introduce refs now
+  e2' <- substitute n e1' e2
+  simplify e2'
 simplify l@ELam{} = return l
 simplify l@EFix{} = return l
 simplify (EApp l e1 e2) = do
@@ -121,22 +156,29 @@ simplify (EOp l op e1 e2) = do
     _ -> locatedError l $
       "Cannot perform arithmetic operation on " <> ppExpr e1' <> " and " <> ppExpr e2'
 
-substitute :: Name -> Expr -> Expr -> Compiler Expr
+substitute :: Name -> Expr -> Expr -> StateT Env (State CompilerState) Expr
 substitute _ _ e@(EEmpty _)    = return e
 substitute _ _ e@(EInt _ _)    = return e
 substitute _ _ e@(EFloat _ _)  = return e
 substitute _ _ e@(EBool _ _)   = return e
+substitute _ _ e@ENewArr{}     = return e
 substitute n e (ESig _ e' _)   = substitute n e e'
+substitute n e (EDeref l e')   = EDeref l <$> substitute n e e'
+substitute n e (ERef l e')     = ERef l <$> substitute n e e'
+substitute n e (EAssign l e1 e2) = EAssign l <$> substitute n e e1 <*> substitute n e e2
+substitute n e (ESeq l e1 e2)  = ESeq l <$> substitute n e e1 <*> substitute n e e2
 substitute n e (ECons l e' es) = ECons l <$> substitute n e e' <*> substitute n e es
 substitute n e (ETuple l es) = ETuple l <$> mapM (substitute n e) es
 substitute n e (EList  l es) = EList  l <$> mapM (substitute n e) es
+substitute n e (EWhile l e1 e2) = EWhile l <$> substitute n e e1 <*> substitute n e e2
+substitute n e (EArrAcc l e1 e2) = EArrAcc l <$> substitute n e e1 <*> substitute n e e2
 substitute n e (ELam l x e1)
-  | x == n    = warnNameShadow l x >> return (ELam l x e1)
+  | x == n    = pure (warnNameShadow l x) >> return (ELam l x e1)
   | otherwise = do
     e1' <- substitute n e e1
     return $ ELam l x e1'
 substitute n e (EFix l f x e1)
-  | x == n || x == f = warnNameShadow l x >> return (EFix l f x e1)
+  | x == n || x == f = pure (warnNameShadow l x) >> return (EFix l f x e1)
   | otherwise = substitute n e e1
 substitute n e (EApp l e1 e2)   = do
   e1' <- substitute n e e1
@@ -152,7 +194,7 @@ substitute n e (EIf l e1 e2 e3) = do
   e3' <- substitute n e e3
   return $ EIf l e1' e2' e3'
 substitute n e (ELet l x e1 e2)
-  | x == n = warnNameShadow l x >> return (ELet l x e1 e2)
+  | x == n = pure (warnNameShadow l x) >> return (ELet l x e1 e2)
   | otherwise = do
     e1' <- substitute n e e1
     e2' <- substitute n e e2
