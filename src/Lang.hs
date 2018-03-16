@@ -34,6 +34,7 @@ type Name = Text
 
 data Token =
     TLParen { tloc :: Location }
+  | TEof    { tloc :: Location }
   | TRParen { tloc :: Location }
   | TLte    { tloc :: Location }
   | TComma  { tloc :: Location }
@@ -163,6 +164,7 @@ ppToken (TLid _ t)      = t
 ppToken (TUid _ t)      = t
 ppToken (TInt _ n)      = T.pack $ show n
 ppToken (TFloat _ f)    = T.pack $ show f
+ppToken (TEof _)        = ""
 
 ppTokenList :: [Token] -> Text
 ppTokenList ts = T.concat ["[", T.intercalate ", " (map ppToken ts), "]"]

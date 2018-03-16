@@ -5,14 +5,13 @@ import Data.ByteString.Lazy     (ByteString)
 import Data.Monoid              ((<>))
 import Data.Text                (Text)
 import Error
-import Lexer
 import Parser
 import Lang
 import Location
 import Typechecker
 
 evaluate :: ByteString -> Compiler Text
-evaluate = fmap ppValue . interpret . typecheck . parse . lexer
+evaluate = fmap ppValue . interpret . typecheck . parse
 {-# INLINE evaluate #-}
 
 interpret :: Expr -> Compiler Value

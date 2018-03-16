@@ -70,19 +70,23 @@ main = do
      <> header "compiler - a compiler for CSC-312" )
 
 lexFile :: String -> IO ()
-lexFile file = do
+lexFile file =
+  do
   contents <- BL.readFile file
-  TIO.putStrLn $ ppTokenList (lexer contents)
+  TIO.putStrLn $ ppTokenList (filter notEof (lexer contents))
+  where
+    notEof (TEof _) = False  -- Remove EOFs so I don't have to remake test suite
+    notEof _ = True
 
 parseFile :: String -> IO ()
 parseFile file = do
   contents <- BL.readFile file
-  TIO.putStrLn $ ppExpr (parse (lexer contents))
+  TIO.putStrLn $ ppExpr (parse contents)
 
 typeFile :: String -> IO ()
 typeFile file = do
   contents <- BL.readFile file
-  TIO.putStrLn $ ppType (getType (parse (lexer contents)))
+  TIO.putStrLn $ ppType (getType (parse contents))
 
 interpretFile :: String -> IO ()
 interpretFile file = do

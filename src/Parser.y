@@ -2,13 +2,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Parser (parse) where
 
+import Data.ByteString.Lazy (ByteString)
 import Data.Text (Text)
 import Error
 import Lang
+import Lexer
 import Location
 }
 
 %name parseRaw
+%lexer {lexerP} { TEof NoLocation }
+%monad {Alex}
 %tokentype { Token }
 %error { parseError }
 
@@ -46,6 +50,10 @@ import Location
       float   { TFloat  _ _ }
 
 %%
+
+mexp :: { Expr }
+mexp : {- empty -}        { EEmpty NoLocation            }
+     | exp                { $1                           }
 
 exp  :: { Expr }
 exp  : iexp '::' type     { ESig (locate $1) $1 $3       }
@@ -100,11 +108,11 @@ atype : uid { TyLit (tid $1) }
       | '[' type ']' { TyList $2 }
 
 {
-parse :: [Token] -> Expr
-parse [] = EEmpty (Location 0 0)
-parse ts = parseRaw ts
+parse :: ByteString -> Expr
+parse bs = case runAlex bs parseRaw of
+             Left s -> errorWithoutStackTrace s
+             Right e -> e
 
-parseError :: [Token] -> a
-parseError []     = errorWithoutStackTrace "Parse error at unknown location"
-parseError (t:ts) = locatedError (locate t) "Parse error"
+parseError :: Token -> Alex a
+parseError t = locatedError (locate t) "Parse error"
 }

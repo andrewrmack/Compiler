@@ -5,8 +5,15 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
-module Lexer (lexer) where
+module Lexer
+  ( lexerP
+  , lexer
+  , Alex(..)
+  , runAlex
+  ) where
 
+import Control.Monad
+import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString.Lazy.Char8 as LC
 import Data.ByteString.Lex.Fractional
 import Data.Monoid ((<>))
@@ -18,7 +25,7 @@ import Location
 
 }
 
-%wrapper "posn-bytestring"
+%wrapper "monadUserState-bytestring"
 
 $digit    = 0-9
 $lower    = [a-z]
@@ -31,39 +38,48 @@ $namechar = [a-zA-Z0-9'_] @decimal  = $digit+
 tokens :-
 
 $white+  ;
-\,       { \p s -> TComma  (loc p)                 }
-\(       { \p s -> TLParen (loc p)                 }
-\)       { \p s -> TRParen (loc p)                 }
-\[       { \p s -> TLBrace (loc p)                 }
-\]       { \p s -> TRBrace (loc p)                 }
-\:\:     { \p s -> TDColon (loc p)                 }
-\:       { \p s -> TColon  (loc p)                 }
-\+       { \p s -> TPlus   (loc p)                 }
-\-       { \p s -> TMinus  (loc p)                 }
-\*       { \p s -> TTimes  (loc p)                 }
-\/       { \p s -> TDivide (loc p)                 }
-\<\=     { \p s -> TLte    (loc p)                 }
-\=       { \p s -> TEqual  (loc p)                 }
-\-\>     { \p s -> TRArrow (loc p)                 }
-if       { \p s -> TIf     (loc p)                 }
-then     { \p s -> TThen   (loc p)                 }
-else     { \p s -> TElse   (loc p)                 }
-let      { \p s -> TLet    (loc p)                 }
-in       { \p s -> TIn     (loc p)                 }
-fun      { \p s -> TFun    (loc p)                 }
-fix      { \p s -> TFix    (loc p)                 }
-true     { \p s -> TBool   (loc p) True            }
-false    { \p s -> TBool   (loc p) False           }
-NaN      { \p s -> TFloat  (loc p) (0.0 / 0.0)     }
-@float   { \p s -> TFloat  (loc p) (lexFloat p s)  }
-@decimal { \p s -> TInt    (loc p) (lexInt p s)    }
-@lname   { \p s -> TLid    (loc p) (fromBS s)      }
-@uname   { \p s -> TUid    (loc p) (fromBS s)      }
-.        { \p s -> lexErrorOn p s                  }
+\-\-.*\n ;
+\,       { token $ \(p,_,s,_) n -> TComma  (loc p)   }
+\(       { token $ \(p,_,s,_) n -> TLParen (loc p)   }
+\)       { token $ \(p,_,s,_) n -> TRParen (loc p)   }
+\[       { token $ \(p,_,s,_) n -> TLBrace (loc p)   }
+\]       { token $ \(p,_,s,_) n -> TRBrace (loc p)   }
+\:\:     { token $ \(p,_,s,_) n -> TDColon (loc p)   }
+\:       { token $ \(p,_,s,_) n -> TColon  (loc p)   }
+\+       { token $ \(p,_,s,_) n -> TPlus   (loc p)   }
+\-       { token $ \(p,_,s,_) n -> TMinus  (loc p)   }
+\*       { token $ \(p,_,s,_) n -> TTimes  (loc p)   }
+\/       { token $ \(p,_,s,_) n -> TDivide (loc p)   }
+\<\=     { token $ \(p,_,s,_) n -> TLte    (loc p)   }
+\=       { token $ \(p,_,s,_) n -> TEqual  (loc p)   }
+\-\>     { token $ \(p,_,s,_) n -> TRArrow (loc p)   }
+if       { token $ \(p,_,s,_) n -> TIf     (loc p)   }
+then     { token $ \(p,_,s,_) n -> TThen   (loc p)   }
+else     { token $ \(p,_,s,_) n -> TElse   (loc p)   }
+let      { token $ \(p,_,s,_) n -> TLet    (loc p)   }
+in       { token $ \(p,_,s,_) n -> TIn     (loc p)   }
+fun      { token $ \(p,_,s,_) n -> TFun    (loc p)   }
+fix      { token $ \(p,_,s,_) n -> TFix    (loc p)   }
+true     { token $ \(p,_,s,_) n -> TBool   (loc p) True         }
+false    { token $ \(p,_,s,_) n -> TBool   (loc p) False        }
+NaN      { token $ \(p,_,s,_) n -> TFloat  (loc p) (0.0 / 0.0)  }
+@float   { token $ \(p,_,s,_) n -> TFloat  (loc p) (lexFloat p (B.take n s)) }
+@decimal { token $ \(p,_,s,_) n -> TInt    (loc p) (lexInt p (B.take n s))   }
+@lname   { token $ \(p,_,s,_) n -> TLid    (loc p) (fromBS (B.take n s))  }
+@uname   { token $ \(p,_,s,_) n -> TUid    (loc p) (fromBS (B.take n s))  }
+.        { \(n,_,s,_) _ -> lexErrorOn n s                        }
 
 {
-lexer :: ByteString.ByteString -> [Token]
-lexer = alexScanTokens
+newtype AlexUserState = AlexUserState { commentDepth :: Int }
+
+alexInitUserState :: AlexUserState
+alexInitUserState = AlexUserState 0
+
+alexEOF :: Alex Token
+alexEOF = return (TEof NoLocation)
+
+lexerP :: (Token -> Alex a) -> Alex a
+lexerP = (alexMonadScan >>=)
 
 lexErrorOn :: AlexPosn -> ByteString.ByteString -> a
 lexErrorOn p s = locatedError (loc p) $ "Unexpected character " <> fromBS s
@@ -86,4 +102,19 @@ lexInt p s = case LC.readInt s of
 
 fromBS :: ByteString.ByteString -> Text
 fromBS = TE.decodeUtf8 . ByteString.toStrict
+
+lexer :: ByteString.ByteString -> [Token]
+lexer bs = case lexer' bs of
+             Left s -> errorWithoutStackTrace s
+             Right ts -> ts
+
+lexer' :: ByteString.ByteString -> Either String [Token]
+lexer' inp = runAlex inp gather
+    where
+        gather = do
+            t <- alexMonadScan
+            case t of
+              TEof _ -> return [TEof NoLocation]
+              _        -> (t:) `liftM` gather
+
 }
