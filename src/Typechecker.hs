@@ -4,12 +4,14 @@ module Typechecker(typecheck, getType) where
 import Control.Monad.State
 import qualified Data.HashMap.Lazy as H
 import Data.HashMap.Lazy (HashMap)
-import Data.Monoid ((<>))
 
 import Builtin
-import Error
-import Lang
-import Location
+import Language.Expression
+import Language.Type
+import Utility.Basic
+import Utility.Error
+import Utility.PrettyPrint
+import Utility.Location
 
 getType :: Expr -> Type
 getType = fst . runTypecheck
@@ -53,7 +55,7 @@ typecheck' g e@ESig{} = do
   case unify t1 t2 of
     Just t -> return (t, e')
     Nothing -> locatedError (locate e) $
-      "Failed to unify signature " <> ppType t1 <> " with actual type " <> ppType t2
+      "Failed to unify signature " <> ppr t1 <> " with actual type " <> ppr t2
 typecheck' g e@ETuple{} = do
   (ts, es') <- unzip <$> mapM (typecheck' g) (eelems e)
   return (TyTuple ts, e{eelems=es'})
@@ -69,24 +71,25 @@ typecheck' g e@EApp{} = do
   tmp1 <- freshGenSym
   tmp2 <- freshGenSym
   case unify t1 (TyArr tmp1 tmp2) of
-    Just (TyArr t3 t4) -> case unify t2 t3 of
-                            Just _ -> return (t4, EApp (eloc e) e1 e2)
-                            _ -> locatedError (locate e) $
-                              "Failed to unify input " <> ppType t2 <> " with expected " <> ppType t3
+    Just (TyArr t3 t4) ->
+      case unify t2 t3 of
+        Just _ -> return (t4, EApp (eloc e) e1 e2)
+        _ -> locatedError (locate e) $
+               "Failed to unify input " <> ppr t2 <> " with expected " <> ppr t3
     _ -> locatedError (locate e) $
-           "Attempted to apply non-function type " <> ppType t1
+           "Attempted to apply non-function type " <> ppr t1
 typecheck' g e@EOp{} = do
   (t1,e1) <- typecheck' g (eopp1 e)
   (t2,e2) <- typecheck' g (eopp2 e)
   let t = case (unify t1 t2, unify t1 (TyLit "Int"), unify t1 (TyLit "Float")) of
             (Just _, Just _, _) -> opType (TyLit "Int") (eop e)
             (_, Just _, _) -> locatedError (locate (eopp2 e)) $
-              "Unexpected type " <> ppType t2 <> ". Expected Int"
+              "Unexpected type " <> ppr t2 <> ". Expected Int"
             (Just _, _, Just _) -> opType (TyLit "Float") (eop e)
             (_, _, Just _) -> locatedError (locate (eopp2 e)) $
-              "Unexpected type " <> ppType t2 <> ". Expected Float"
+              "Unexpected type " <> ppr t2 <> ". Expected Float"
             _ -> locatedError (locate (eopp1 e)) $
-              "Unexpected type " <> ppType t1 <> ". Expected Float"
+              "Unexpected type " <> ppr t1 <> ". Expected Float"
   return (t, e{eopp1=e1,eopp2=e2})
 typecheck' g e@EIf{} = do
   (t1,e1) <- typecheck' g (eif e)
@@ -95,9 +98,9 @@ typecheck' g e@EIf{} = do
   case (t1, unify t2 t3) of
     (TyLit "Bool", Just t) -> return (t, e{eif=e1,ethen=e2,eelse=e3})
     (TyLit "Bool", Nothing) -> locatedError (locate e) $
-      "Failed to unify type " <> ppType t2 <> " with " <> ppType t3
+      "Failed to unify type " <> ppr t2 <> " with " <> ppr t3
     (t, _) -> locatedError (locate e) $
-      "Expected Bool in guard of conditional. Given " <> ppType t
+      "Expected Bool in guard of conditional. Given " <> ppr t
 typecheck' g e@ELet{} = do
   (t1,e1) <- typecheck' g (ebind e)
   (t2,e2) <- typecheck' (H.insert (ename e) t1 g) (ein e)

@@ -1,1 +1,1 @@
-[if, true, then, 3, +, 5, else, 5, /, 0]
+[if,true,then,3,+,5,else,5,/,0,]

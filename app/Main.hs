@@ -12,12 +12,13 @@ import Options.Applicative
 import System.Console.Haskeline
 import System.IO
 
-import Error
-import Lang
 import Lexer
 import Parser
 import Typechecker
 import Interpreter
+import Utility.Error
+import Utility.PrettyPrint
+
 import Paths_compiler      (version)
 
 data Mode = Default | LexDump | ParseDump | TypeDump | Interactive
@@ -86,20 +87,17 @@ lexFile :: String -> IO ()
 lexFile file =
   do
   contents <- BL.readFile file
-  TIO.putStrLn $ ppTokenList (filter notEof (lexer contents))
-  where
-    notEof (TEof _) = False  -- Remove EOFs so I don't have to remake test suite
-    notEof _ = True
+  TIO.putStrLn $ ppr (lexer contents)
 
 parseFile :: String -> IO ()
 parseFile file = do
   contents <- BL.readFile file
-  TIO.putStrLn $ ppExpr (parse contents)
+  TIO.putStrLn $ ppr (parse contents)
 
 typeFile :: String -> IO ()
 typeFile file = do
   contents <- BL.readFile file
-  TIO.putStrLn $ ppType (getType (parse contents))
+  TIO.putStrLn $ ppr (getType (parse contents))
 
 interactive :: IO ()
 interactive = runInputT defaultSettings loop

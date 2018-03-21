@@ -2,16 +2,18 @@
 module Interpreter (evaluate, interpret) where
 
 import Data.ByteString.Lazy     (ByteString)
-import Data.Monoid              ((<>))
 import Data.Text                (Text)
-import Error
 import Parser
-import Lang
-import Location
+import Language.Expression
+import Language.Value
 import Typechecker
+import Utility.Basic
+import Utility.Error
+import Utility.PrettyPrint
+import Utility.Location
 
 evaluate :: ByteString -> Compiler Text
-evaluate = fmap ppValue . interpret . typecheck . parse
+evaluate = fmap ppr . interpret . typecheck . parse
 {-# INLINE evaluate #-}
 
 interpret :: Expr -> Compiler Value
@@ -92,7 +94,7 @@ simplify (EOp l op e1 e2) = do
     (EFloat _ f1, EFloat _ f2) -> return $ floatOp l op f1 f2
     (EInt _ n1, EInt _ n2)     -> return $ intOp l op n1 n2
     _ -> locatedError l $
-      "Cannot perform arithmetic operation on " <> ppExpr e1' <> " and " <> ppExpr e2'
+      "Cannot perform arithmetic operation on " <> ppr e1' <> " and " <> ppr e2'
 
 substitute :: Name -> Expr -> Expr -> Compiler Expr
 substitute _ _ e@(EEmpty _)    = return e
@@ -137,20 +139,22 @@ substitute n e e'@(EVar _ x)
 warnNameShadow :: Location -> Name -> Compiler ()
 warnNameShadow l n = logWarning l $ "Binding of " <> n <> " shadows existing binding"
 
-floatOp :: Location -> Op -> Double -> Double -> Expr
-floatOp l Plus   f1 f2 = EFloat l $ f1 +  f2
-floatOp l Minus  f1 f2 = EFloat l $ f1 -  f2
-floatOp l Times  f1 f2 = EFloat l $ f1 *  f2
-floatOp l Divide f1 f2 = EFloat l $ f1 /  f2
-floatOp l Lte    f1 f2 = EBool  l $ f1 <= f2
+floatOp :: Location -> Name -> Double -> Double -> Expr
+floatOp l "+"  f1 f2 = EFloat l $ f1 +  f2
+floatOp l "-"  f1 f2 = EFloat l $ f1 -  f2
+floatOp l "*"  f1 f2 = EFloat l $ f1 *  f2
+floatOp l "/"  f1 f2 = EFloat l $ f1 /  f2
+floatOp l "<=" f1 f2 = EBool  l $ f1 <= f2
+floatOp l s _ _ = locatedError l $ "Unknown binary operator " <> s
 {-# INLINE floatOp #-}
 
-intOp :: Location -> Op -> Int -> Int -> Expr
-intOp l Plus  n1 n2  = EInt  l $ n1 +  n2
-intOp l Minus n1 n2  = EInt  l $ n1 -  n2
-intOp l Times n1 n2  = EInt  l $ n1 *  n2
-intOp l Lte   n1 n2  = EBool l $ n1 <= n2
-intOp l Divide n1 n2
+intOp :: Location -> Name -> Int -> Int -> Expr
+intOp l "+"  n1 n2  = EInt  l $ n1 +  n2
+intOp l "-"  n1 n2  = EInt  l $ n1 -  n2
+intOp l "*"  n1 n2  = EInt  l $ n1 *  n2
+intOp l "<=" n1 n2  = EBool l $ n1 <= n2
+intOp l "/"  n1 n2
   | n2 == 0   = locatedError l "Error: Divide by zero"
   | otherwise = EInt l $ n1 `quot` n2
+intOp l s _ _ = locatedError l $ "Unknown binary operator " <> s
 {-# INLINE intOp #-}

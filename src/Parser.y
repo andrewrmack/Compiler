@@ -4,10 +4,14 @@ module Parser (parse) where
 
 import Data.ByteString.Lazy (ByteString)
 import Data.Text (Text)
-import Error
-import Lang
+
+import Language.Expression
+import Language.Token
+import Language.Type
 import Lexer
-import Location
+import Utility.Basic
+import Utility.Error
+import Utility.Location
 }
 
 %name parseRaw
@@ -60,13 +64,13 @@ exp  : iexp '::' type     { ESig (locate $1) $1 $3       }
      | iexp               { $1                           }
 
 iexp :: { Expr }
-iexp : iexp '+'  iexp     { EOp (locate $2) Plus $1 $3   }
-     | iexp '-'  iexp     { EOp (locate $2) Minus $1 $3  }
-     | iexp '*'  iexp     { EOp (locate $2) Times $1 $3  }
-     | iexp '/'  iexp     { EOp (locate $2) Divide $1 $3 }
-     | iexp '<=' iexp     { EOp (locate $2) Lte $1 $3    }
-     | iexp ':'  iexp     { ECons (locate $2) $1 $3      }
-     | lexp               { $1                           }
+iexp : iexp '+'  iexp     { EOp (locate $2) "+"  $1 $3 }
+     | iexp '-'  iexp     { EOp (locate $2) "-"  $1 $3 }
+     | iexp '*'  iexp     { EOp (locate $2) "*"  $1 $3 }
+     | iexp '/'  iexp     { EOp (locate $2) "/"  $1 $3 }
+     | iexp '<=' iexp     { EOp (locate $2) "<=" $1 $3 }
+     | iexp ':'  iexp     { ECons (locate $2) $1 $3    }
+     | lexp               { $1                         }
 
 lexp :: { Expr }
 lexp : if exp then exp else exp    { EIf (locate $1) $2 $4 $6                  }

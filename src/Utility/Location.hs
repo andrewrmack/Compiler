@@ -1,5 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
-module Location where
+module Utility.Location
+  ( Location(..)
+  , Located(..)
+  ) where
 
 import Control.DeepSeq (NFData)
 import GHC.Generics    (Generic)

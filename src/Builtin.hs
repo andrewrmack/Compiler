@@ -2,7 +2,8 @@
 module Builtin where
 
 import Data.Text (Text)
-import Lang
+import Language.Type
+import Utility.Basic
 
 builtins :: [(Text,Type)]
 builtins = [
@@ -12,3 +13,7 @@ builtins = [
     ("head", TyArr (TyList (TyVar "a")) (TyVar "a")),
     ("tail", TyArr (TyList (TyVar "a")) (TyList (TyVar "a")))
   ]
+
+opType :: Type -> Name -> Type
+opType _ "<=" = TyLit "Bool"
+opType t _ = t

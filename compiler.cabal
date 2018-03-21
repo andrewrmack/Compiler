@@ -2,10 +2,10 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d84a1a85094250ad35be943733becdc2ea2969b69573f524c267dce423c2a093
+-- hash: aca7fef1f335e4ec9c57b13ec098137bd10bb845c955e67b72fbb5f582d447bb
 
 name:           compiler
-version:        0.5.0
+version:        0.7.0
 description:    Please see the README on Github at <https://github.com/andrewrmack/compiler#readme>
 homepage:       https://github.com/andrewrmack/compiler#readme
 bug-reports:    https://github.com/andrewrmack/compiler/issues
@@ -42,13 +42,18 @@ library
     , happy
   exposed-modules:
       Builtin
-      Error
       Interpreter
-      Lang
+      Language.Expression
+      Language.Token
+      Language.Type
+      Language.Value
       Lexer
-      Location
       Parser
       Typechecker
+      Utility.Basic
+      Utility.Error
+      Utility.Location
+      Utility.PrettyPrint
   other-modules:
       Paths_compiler
   default-language: Haskell2010

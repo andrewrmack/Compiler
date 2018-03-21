@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, TypeSynonymInstances, FlexibleInstances #-}
-module Error
+module Utility.Error
   ( locatedError
   , logWarning
   , showWarnings
@@ -11,7 +11,7 @@ import Control.Monad.Writer
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Location (Location(..))
+import Utility.Location (Location(..))
 import System.IO
 
 type Compiler a = Writer [Text] a

@@ -19,9 +19,10 @@ import Data.ByteString.Lex.Fractional
 import Data.Monoid ((<>))
 import Data.Text (Text)
 import Data.Text.Encoding as TE
-import Error
-import Lang
-import Location
+
+import Language.Token
+import Utility.Error
+import Utility.Location
 
 }
 
