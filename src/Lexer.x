@@ -56,6 +56,7 @@ $white+  ;
  \]       { token $ \(p,_,s,_) n -> TRBrace (loc p)   }
  \:\:     { token $ \(p,_,s,_) n -> TDColon (loc p)   }
  \:       { token $ \(p,_,s,_) n -> TColon  (loc p)   }
+ \;       { token $ \(p,_,s,_) n -> TSemi   (loc p)   }
  \+       { token $ \(p,_,s,_) n -> TPlus   (loc p)   }
  \-       { token $ \(p,_,s,_) n -> TMinus  (loc p)   }
  \*       { token $ \(p,_,s,_) n -> TTimes  (loc p)   }

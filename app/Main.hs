@@ -113,7 +113,7 @@ interactive = runInputT defaultSettings loop
 
 doEval :: BL.ByteString -> IO ()
 doEval contents = do
-  let evaled = evaluate contents
+  let evaled = evaluate (typecheck (parse contents))
   let (results, warnings) = runCompiler evaled
   showWarnings warnings
   TIO.putStrLn results

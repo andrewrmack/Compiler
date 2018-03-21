@@ -32,6 +32,7 @@ import Utility.Location
       ']'     { TRBrace _   }
       '::'    { TDColon _   }
       ':'     { TColon  _   }
+      ';'     { TSemi   _   }
       ','     { TComma  _   }
       '<='    { TLte    _   }
       '='     { TEqual  _   }
@@ -59,6 +60,11 @@ mexp :: { Expr }
 mexp : {- empty -}        { EEmpty NoLocation            }
      | exp                { $1                           }
 
+{- An exp with an optional trailing semicolon -}
+expc :: { Expr }
+expc : exp ';'            { $1                           }
+     | exp                { $1                           }
+
 exp  :: { Expr }
 exp  : iexp '::' type     { ESig (locate $1) $1 $3       }
      | iexp               { $1                           }
@@ -73,7 +79,7 @@ iexp : iexp '+'  iexp     { EOp (locate $2) "+"  $1 $3 }
      | lexp               { $1                         }
 
 lexp :: { Expr }
-lexp : if exp then exp else exp    { EIf (locate $1) $2 $4 $6                  }
+lexp : if expc then expc else expc { EIf (locate $1) $2 $4 $6                  }
      | let lid '=' exp in exp      { ELet (locate $1) (tid $2) $4 $6         }
      | fun lid '->' exp            { ELam (locate $1) (tid $2) $4            }
      | fix lid lid '->' exp        { EFix (locate $1) (tid $2) (tid $3) $5 }

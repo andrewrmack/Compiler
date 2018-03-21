@@ -19,6 +19,7 @@ data Token =
   | TComma  { tloc :: Location }
   | TDColon { tloc :: Location }
   | TColon  { tloc :: Location }
+  | TSemi   { tloc :: Location }
   | TLBrace { tloc :: Location }
   | TRBrace { tloc :: Location }
   | TEqual  { tloc :: Location }
@@ -52,6 +53,7 @@ instance Printable Token where
   ppr (TComma _)      = ","
   ppr (TDColon _)     = "::"
   ppr (TColon _)      = ":"
+  ppr (TSemi _)       = ";"
   ppr (TLBrace _)     = "["
   ppr (TRBrace _)     = "]"
   ppr (TEqual _)      = "="
