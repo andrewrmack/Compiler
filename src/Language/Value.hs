@@ -8,6 +8,8 @@ import Language.Expression
 import Utility.Basic
 import Utility.PrettyPrint
 
+type Env = [(Name, Value)]
+
 data Value =
     VEmpty
   | VVar   Name
@@ -16,8 +18,8 @@ data Value =
   | VBool  !Bool
   | VTuple [Value]
   | VList [Value]
-  | VLam  Name Expr
-  | VFix  Name Name Expr
+  | VLam  Name Expr Env
+  | VFix  Name Name Expr Env
   deriving (Generic)
 
 instance NFData Value

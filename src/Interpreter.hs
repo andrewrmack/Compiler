@@ -2,6 +2,7 @@
 module Interpreter (evaluate, interpret) where
 
 import Data.Text                (Text)
+
 import Language.Expression
 import Language.Value
 import Utility.Basic
@@ -15,125 +16,86 @@ evaluate = fmap ppr . interpret
 
 interpret :: Expr -> Compiler Value
 interpret e = do
-  v <- simplify e
+  v <- simplify [] e
   if isFinal v
   then return v
   else locatedError (locate e) "Expression could not be reduced to a value"
 
 -- Until I implement full pattern matching, these have to be
 -- special cases
-interpretBuiltinApp :: Name -> Expr -> Compiler Value
-interpretBuiltinApp "fst" e = do
-  e2 <- simplify e
-  case e2 of
-    VTuple es -> return $ head es
-    _ -> locatedError (locate e) "Cannot get first of non-tuple"
-interpretBuiltinApp "snd" e = do
-  e2 <- simplify e
-  case e2 of
-    VTuple es -> return $ head (tail es)
-    _ -> locatedError (locate e) "Cannot get second of non-tuple"
-interpretBuiltinApp "empty" e = do
-  e2 <- simplify e
-  case e2 of
-    VList es -> return $ VBool (null es)
-    _ -> locatedError (locate e) "Cannot check emptiness of non-list"
-interpretBuiltinApp "head" e = do
-  e2 <- simplify e
-  case e2 of
-    VList es -> return $ head es
-    _ -> locatedError (locate e) "Cannot get head of non-list"
-interpretBuiltinApp "tail" e = do
-  e2 <- simplify e
-  case e2 of
-    VList es -> return $ VList (tail es)
-    _ -> locatedError (locate e) "Cannot get tail of non-list"
-interpretBuiltinApp s e = locatedError (locate e) $
-  s <> " is not a builtin function"
+interpretBuiltinApp :: Location -> Name -> Value -> Compiler Value
+interpretBuiltinApp l "fst" v =
+  case v of
+    VTuple vs -> return $ head vs
+    _ -> locatedError l "Cannot get first of non-tuple"
+interpretBuiltinApp l "snd" v =
+  case v of
+    VTuple vs -> return $ head (tail vs)
+    _ -> locatedError l "Cannot get second of non-tuple"
+interpretBuiltinApp l "empty" v =
+  case v of
+    VList vs -> return $ VBool (null vs)
+    _ -> locatedError l "Cannot check emptiness of non-list"
+interpretBuiltinApp l "head" v =
+  case v of
+    VList vs -> return $ head vs
+    _ -> locatedError l "Cannot get head of non-list"
+interpretBuiltinApp l "tail" v =
+  case v of
+    VList vs -> return $ VList (tail vs)
+    _ -> locatedError l "Cannot get tail of non-list"
+interpretBuiltinApp l s _ = locatedError l $ s <> " is not a builtin function"
 
-simplify :: Expr -> Compiler Value
-simplify (ESig _ e _) = simplify e
-simplify (EEmpty _)   = return VEmpty
-simplify (EVar _ n)   = return $ VVar n
-simplify (EInt _ n)   = return $ VInt n
-simplify (EBool _ b)  = return $ VBool b
-simplify (EFloat _ f) = return $ VFloat f
-simplify (ECons l e es) = do
-  vs <- simplify es
-  v  <- simplify e
+simplify :: Env -> Expr -> Compiler Value
+simplify _ (EEmpty _)   = return VEmpty
+simplify _ (EInt _ n)   = return $ VInt n
+simplify _ (EBool _ b)  = return $ VBool b
+simplify _ (EFloat _ f) = return $ VFloat f
+simplify env (ELam _ x e) = return $ VLam x e env
+simplify env (EFix _ f x e) = return $ VFix f x e env
+simplify env (ELet _ n e1 e2) = do
+  v1 <- simplify env e1
+  simplify ((n,v1):env) e2
+simplify env (ESig _ e _) = simplify env e
+simplify env (EVar _ n)   =
+  case lookup n env of
+    Just v -> return v
+    Nothing -> return $ VVar n
+simplify env (ECons l e es) = do
+  vs <- simplify env es
+  v  <- simplify env e
   case vs of
     (VList vs') -> return $ VList (v:vs')
     _ -> locatedError l "Can't cons onto non list"
-simplify (ETuple _ es)  = VTuple <$> mapM simplify es
-simplify (EList _ es)   = VList  <$> mapM simplify es
-simplify (ELet _ n e1 e2) = substitute n e1 e2 >>= simplify
-simplify (ELam _ x e) = return $ VLam x e
-simplify (EFix _ f x e) = return $ VFix f x e
-simplify (EApp l e1 e2) = do
-  v1 <- simplify e1
+simplify env (ETuple _ es) = VTuple <$> mapM (simplify env) es
+simplify env (EList _ es)  = VList  <$> mapM (simplify env) es
+simplify env (EApp l e1 e2) = do
+  v1 <- simplify env e1
+  v2 <- simplify env e2
   case v1 of
-    VLam n e -> substitute n e2 e >>= simplify
-    VFix f x e -> substitute x e2 e >>= substitute f (EFix l f x e) >>= simplify
-    VVar v -> interpretBuiltinApp v e2
+    VLam n e env' -> simplify ((n,v2):env') e
+    VFix f x e env' -> simplify ((x,v2):(f,VFix f x e env'):env') e
+    VVar v -> interpretBuiltinApp l v v2
     _ -> locatedError l "Cannot apply non-lambda to expression"
-simplify (EIf l e1 e2 e3) = do
-  v1 <- simplify e1
+simplify env (EIf l e1 e2 e3) = do
+  v1 <- simplify env e1
   let b1 = case v1 of
              (VBool b) -> b
              _ -> locatedError l "Cannot evaluate 'if' with non-boolean condition"
-  if b1 then simplify e2 else simplify e3
-simplify (EOp l op e1 e2) = do
-  v1 <- simplify e1
-  v2 <- simplify e2
+  if b1 then simplify env e2 else simplify env e3
+simplify env (EOp l op e1 e2) = do
+  v1 <- simplify env e1
+  v2 <- simplify env e2
   case (v1, v2) of
     (VFloat f1, VFloat f2) -> return $ floatOp l op f1 f2
     (VInt n1, VInt n2)     -> return $ intOp l op n1 n2
     _ -> locatedError l $
       "Cannot perform arithmetic operation on " <> ppr v1 <> " and " <> ppr v2
 
-substitute :: Name -> Expr -> Expr -> Compiler Expr
-substitute _ _ e@(EEmpty _)    = return e
-substitute _ _ e@(EInt _ _)    = return e
-substitute _ _ e@(EFloat _ _)  = return e
-substitute _ _ e@(EBool _ _)   = return e
-substitute n e (ESig _ e' _)   = substitute n e e'
-substitute n e (ECons l e' es) = ECons l <$> substitute n e e' <*> substitute n e es
-substitute n e (ETuple l es) = ETuple l <$> mapM (substitute n e) es
-substitute n e (EList  l es) = EList  l <$> mapM (substitute n e) es
-substitute n e (ELam l x e1)
-  | x == n    = warnNameShadow l x >> return (ELam l x e1)
-  | otherwise = do
-    e1' <- substitute n e e1
-    return $ ELam l x e1'
-substitute n e (EFix l f x e1)
-  | x == n || x == f = warnNameShadow l x >> return (EFix l f x e1)
-  | otherwise = substitute n e e1
-substitute n e (EApp l e1 e2)   = do
-  e1' <- substitute n e e1
-  e2' <- substitute n e e2
-  return $ EApp l e1' e2'
-substitute n e (EOp l o e1 e2)  = do
-  e1' <- substitute n e e1
-  e2' <- substitute n e e2
-  return $ EOp l o e1' e2'
-substitute n e (EIf l e1 e2 e3) = do
-  e1' <- substitute n e e1
-  e2' <- substitute n e e2
-  e3' <- substitute n e e3
-  return $ EIf l e1' e2' e3'
-substitute n e (ELet l x e1 e2)
-  | x == n = warnNameShadow l x >> return (ELet l x e1 e2)
-  | otherwise = do
-    e1' <- substitute n e e1
-    e2' <- substitute n e e2
-    return $ ELet l x e1' e2'
-substitute n e e'@(EVar _ x)
-  | x == n    = return e
-  | otherwise = return e'
-
+{-
 warnNameShadow :: Location -> Name -> Compiler ()
 warnNameShadow l n = logWarning l $ "Binding of " <> n <> " shadows existing binding"
-
+-}
 floatOp :: Location -> Name -> Double -> Double -> Value
 floatOp _ "+"  f1 f2 = VFloat $ f1 +  f2
 floatOp _ "-"  f1 f2 = VFloat $ f1 -  f2
