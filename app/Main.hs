@@ -100,8 +100,11 @@ typeFile file = do
   TIO.putStrLn $ ppr (getType (parse contents))
 
 interactive :: IO ()
-interactive = runInputT defaultSettings loop
+interactive = runInputT defaultSettings (withInterrupt repl)
   where
+    repl :: InputT IO ()
+    repl = handle (\Interrupt -> outputStrLn "Interrupted." >> repl)
+             loop
     loop :: InputT IO ()
     loop = do
       minput <- getInputLine ">>> "
