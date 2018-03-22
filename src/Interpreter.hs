@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Interpreter (evaluate, interpret) where
 
+import Control.Monad            (when)
+import Data.Maybe               (isJust)
 import Data.Text                (Text)
 
 import Language.Expression
@@ -20,6 +22,14 @@ interpret e = do
   if isFinal v
   then return v
   else locatedError (locate e) "Expression could not be reduced to a value"
+
+warnNameShadow :: Location -> Name -> Compiler ()
+warnNameShadow l n = logWarning l $ "Binding of " <> n <> " shadows existing binding"
+
+addBinding :: Location -> Name -> Value -> Env -> Compiler Env
+addBinding l n v e = do
+  when (isJust (lookup n e)) (warnNameShadow l n)
+  return $ (n,v):e
 
 -- Until I implement full pattern matching, these have to be
 -- special cases
@@ -53,9 +63,10 @@ simplify _ (EBool _ b)  = return $ VBool b
 simplify _ (EFloat _ f) = return $ VFloat f
 simplify env (ELam _ x e) = return $ VLam x e env
 simplify env (EFix _ f x e) = return $ VFix f x e env
-simplify env (ELet _ n e1 e2) = do
+simplify env (ELet l n e1 e2) = do
   v1 <- simplify env e1
-  simplify ((n,v1):env) e2
+  env' <- addBinding l n v1 env
+  simplify env' e2
 simplify env (ESig _ e _) = simplify env e
 simplify env (EVar _ n)   =
   case lookup n env of
@@ -73,8 +84,13 @@ simplify env (EApp l e1 e2) = do
   v1 <- simplify env e1
   v2 <- simplify env e2
   case v1 of
-    VLam n e env' -> simplify ((n,v2):env') e
-    VFix f x e env' -> simplify ((x,v2):(f,VFix f x e env'):env') e
+    VLam n e env' -> do
+      env'' <- addBinding l n v2 env'
+      simplify env'' e
+    VFix f x e env' -> do
+      env'' <- addBinding l x v2 env'
+      env''' <- addBinding l f (VFix f x e env') env''
+      simplify env''' e
     VVar v -> interpretBuiltinApp l v v2
     _ -> locatedError l "Cannot apply non-lambda to expression"
 simplify env (EIf l e1 e2 e3) = do
@@ -92,10 +108,7 @@ simplify env (EOp l op e1 e2) = do
     _ -> locatedError l $
       "Cannot perform arithmetic operation on " <> ppr v1 <> " and " <> ppr v2
 
-{-
-warnNameShadow :: Location -> Name -> Compiler ()
-warnNameShadow l n = logWarning l $ "Binding of " <> n <> " shadows existing binding"
--}
+
 floatOp :: Location -> Name -> Double -> Double -> Value
 floatOp _ "+"  f1 f2 = VFloat $ f1 +  f2
 floatOp _ "-"  f1 f2 = VFloat $ f1 -  f2
