@@ -30,6 +30,7 @@ import Utility.Location
       ')'     { TRParen _   }
       '['     { TLBrace _   }
       ']'     { TRBrace _   }
+      '\\'    { TBSlash _   }
       '::'    { TDColon _   }
       ':'     { TColon  _   }
       ';'     { TSemi   _   }
@@ -81,7 +82,7 @@ iexp : iexp '+'  iexp     { EOp (locate $2) "+"  $1 $3 }
 lexp :: { Expr }
 lexp : if expc then expc else expc { EIf (locate $1) $2 $4 $6                  }
      | let lid '=' exp in exp      { ELet (locate $1) (tid $2) $4 $6         }
-     | fun lid '->' exp            { ELam (locate $1) (tid $2) $4            }
+     | '\\' lid '->' exp           { ELam (locate $1) (tid $2) $4            }
      | fix lid lid '->' exp        { EFix (locate $1) (tid $2) (tid $3) $5 }
      | fexp                        { $1                                        }
 

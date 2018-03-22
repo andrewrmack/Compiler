@@ -1,7 +1,7 @@
 -- A comment
 let max2 =
   -- another comment
-  fun x -> fun y -> if y <= x then x else y
+  \x -> \y -> if y <= x then x else y
 in
 -- comments everywhere!
 let a = 5 in

@@ -15,6 +15,7 @@ data Token =
     TLParen { tloc :: Location }
   | TEof    { tloc :: Location }
   | TRParen { tloc :: Location }
+  | TBSlash { tloc :: Location }
   | TLte    { tloc :: Location }
   | TComma  { tloc :: Location }
   | TDColon { tloc :: Location }
@@ -49,6 +50,7 @@ instance Located Token where
 instance Printable Token where
   ppr (TLParen _)     = "("
   ppr (TRParen _)     = ")"
+  ppr (TBSlash _)     = "\\"
   ppr (TLte _)        = "<="
   ppr (TComma _)      = ","
   ppr (TDColon _)     = "::"

@@ -50,6 +50,7 @@ $white+  ;
  \-\-.*\n ;
  \{\-     { openComment                               }
  \,       { token $ \(p,_,s,_) n -> TComma  (loc p)   }
+ \\       { token $ \(p,_,s,_) n -> TBSlash (loc p)   }
  \(       { token $ \(p,_,s,_) n -> TLParen (loc p)   }
  \)       { token $ \(p,_,s,_) n -> TRParen (loc p)   }
  \[       { token $ \(p,_,s,_) n -> TLBrace (loc p)   }
