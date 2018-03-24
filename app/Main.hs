@@ -6,7 +6,7 @@ import Data.Maybe          (listToMaybe, fromMaybe)
 import Data.Semigroup      ((<>))
 import qualified Data.Text.IO as TIO
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Lazy.Char8 as BLC
+import qualified Data.ByteString.Lazy.UTF8 as BLU
 import Data.Version        (showVersion)
 import Options.Applicative
 import System.Console.Haskeline
@@ -111,7 +111,7 @@ interactive = runInputT defaultSettings (withInterrupt repl)
       case minput of
         Nothing -> return ()
         Just sinput -> do
-          liftIO $ doEval (BLC.pack sinput) `catch` \(ErrorCall s) -> hPutStrLn stderr s
+          liftIO $ doEval (BLU.fromString sinput) `catch` \(ErrorCall s) -> hPutStrLn stderr s
           loop
 
 doEval :: BL.ByteString -> IO ()

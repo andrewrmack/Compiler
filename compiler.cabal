@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: aca7fef1f335e4ec9c57b13ec098137bd10bb845c955e67b72fbb5f582d447bb
+-- hash: fd1ab1664a9ef3dc6c7fdfb1fdaaf4132606c7ab153a7401684938c4c04b8dab
 
 name:           compiler
 version:        0.7.0
@@ -70,6 +70,7 @@ executable compiler
     , haskeline
     , optparse-applicative
     , text
+    , utf8-string
   other-modules:
       Paths_compiler
   default-language: Haskell2010

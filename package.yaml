@@ -47,6 +47,7 @@ executables:
     - haskeline
     - optparse-applicative
     - text
+    - utf8-string
     other-modules:
     - Paths_compiler
 
