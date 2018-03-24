@@ -1,0 +1,1 @@
+(let (map = (fix m f -> (fun xs -> (if (empty xs) [] (f (head xs)):((m f) (tail xs)))))) ((map (fun x -> (* x x))) [1,2,3,4,5,6,7,8,9,10]))
