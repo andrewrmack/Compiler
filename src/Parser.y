@@ -43,7 +43,6 @@ import Utility.Location
       else    { TElse   _   }
       let     { TLet    _   }
       in      { TIn     _   }
-      fun     { TFun    _   }
       fix     { TFix    _   }
       '+'     { TPlus   _   }
       '-'     { TMinus  _   }

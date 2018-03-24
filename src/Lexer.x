@@ -31,7 +31,8 @@ import Utility.Location
 $digit    = 0-9
 $lower    = [a-z]
 $upper    = [A-Z]
-$namechar = [a-zA-Z0-9'_] @decimal  = $digit+
+$namechar = [a-zA-Z0-9'_]
+@decimal  = $digit+
 @float    = @decimal \. @decimal
 @lname    = $lower $namechar*
 @uname    = $upper $namechar*
@@ -70,7 +71,6 @@ $white+  ;
  else     { token $ \(p,_,s,_) n -> TElse   (loc p)   }
  let      { token $ \(p,_,s,_) n -> TLet    (loc p)   }
  in       { token $ \(p,_,s,_) n -> TIn     (loc p)   }
- fun      { token $ \(p,_,s,_) n -> TFun    (loc p)   }
  fix      { token $ \(p,_,s,_) n -> TFix    (loc p)   }
  true     { token $ \(p,_,s,_) n -> TBool   (loc p) True         }
  false    { token $ \(p,_,s,_) n -> TBool   (loc p) False        }

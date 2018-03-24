@@ -106,7 +106,7 @@ simplify env (EOp l op e1 e2) = do
     (VFloat f1, VFloat f2) -> return $ floatOp l op f1 f2
     (VInt n1, VInt n2)     -> return $ intOp l op n1 n2
     _ -> locatedError l $
-      "Cannot perform arithmetic operation on " <> ppr v1 <> " and " <> ppr v2
+      "Cannot perform arithmetic operation on" <+> ppr v1 <+> "and" <+> ppr v2
 
 
 floatOp :: Location -> Name -> Double -> Double -> Value

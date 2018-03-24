@@ -24,7 +24,6 @@ data Token =
   | TLBrace { tloc :: Location }
   | TRBrace { tloc :: Location }
   | TEqual  { tloc :: Location }
-  | TFun    { tloc :: Location }
   | TFix    { tloc :: Location }
   | TRArrow { tloc :: Location }
   | TIf     { tloc :: Location }
@@ -65,7 +64,6 @@ instance Printable Token where
   ppr (TElse _)       = "else"
   ppr (TLet _)        = "let"
   ppr (TIn _)         = "in"
-  ppr (TFun _)        = "fun"
   ppr (TFix _)        = "fix"
   ppr (TPlus _)       = "+"
   ppr (TMinus _)      = "-"
